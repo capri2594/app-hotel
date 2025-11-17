@@ -24,7 +24,7 @@
                         <!-- Start Navbar -->
                         <nav class="navbar navbar-expand-lg">
                             <a class="navbar-brand" href="index.html">
-                                <img src="assets/images/logo/white-logo.svg" alt="Logo">
+                                <img src="assets/images/logo/logo.png" alt="Logo">
                             </a>
                             <button class="navbar-toggler mobile-menu-btn" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
@@ -47,7 +47,7 @@
             <div class="row">
                 <div class="col-12">
                     <div class="section-title">
-                        <form>
+                        <form method="POST" action="index1.php">
                             <!-- Name input -->
                             <div data-mdb-input-init class="form-outline mb-4">
                                 <input type="text" id="usuario" class="form-control" name="usuario" placeholder="Nombre de Usuario"/>
@@ -56,12 +56,12 @@
 
                             <!-- Email input -->
                             <div data-mdb-input-init class="form-outline mb-4">
-                                <input type="text" id="contrasena" class="form-control" name="contrasena" placeholder="Contraseña"/>
+                                <input type="password" id="contrasena" class="form-control" name="contrasena" placeholder="Contraseña"/>
                                 <label class="form-label" for="contrasena"></label>
                             </div>
 
                             <!-- Submit button -->
-                            <button data-mdb-ripple-init type="button" class="btn btn-success btn-block mb-4">Ingresar</button>
+                            <button data-mdb-ripple-init type="submit" class="btn btn-success btn-block mb-4">Ingresar</button>
                         </form>
                     </div>
                 </div>
