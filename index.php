@@ -2,8 +2,21 @@
 <html class="no-js" lang="zxx">
 
 <!-- Start Header Area -->
-<?php include 'header.php'; ?>
-
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>HabitApp</title>
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="shortcut icon" type="image/x-icon" href="assets/images/favicon.ico" />
+    <!-- ========================= CSS here ========================= -->
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/css/LineIcons.2.0.css" />
+    <link rel="stylesheet" href="assets/css/animate.css" />
+    <link rel="stylesheet" href="assets/css/tiny-slider.css" />
+    <link rel="stylesheet" href="assets/css/glightbox.min.css" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+</head>
 <body>
     <!-- Preloader -->
     <div class="preloader">
@@ -47,7 +60,7 @@
             <div class="row">
                 <div class="col-12">
                     <div class="section-title">
-                        <form method="POST" action="index1.php">
+                        <form method="POST" action="login.php">
                             <!-- Name input -->
                             <div data-mdb-input-init class="form-outline mb-4">
                                 <input type="text" id="usuario" class="form-control" name="usuario" placeholder="Nombre de Usuario"/>
@@ -69,7 +82,12 @@
         </div>
     </section>
     <!-- End Features Area -->
-    <?php include 'footer.php'; ?>
+    <!-- ========================= JS here ========================= -->
+    <script src="assets/js/bootstrap.min.js"></script>
+    <script src="assets/js/wow.min.js"></script>
+    <script src="assets/js/tiny-slider.js"></script>
+    <script src="assets/js/glightbox.min.js"></script>
+    <script src="assets/js/count-up.min.js"></script>
+    <script src="assets/js/main.js"></script>
 </body>
-
 </html>

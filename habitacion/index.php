@@ -2,7 +2,7 @@
 <html class="no-js" lang="zxx">
 
 <!-- Start Header Area -->
-<?php include 'header.php'; ?>
+<?php include '../header.php'; ?>
 
 <body>
     <!--[if lte IE 9]>
@@ -12,7 +12,7 @@
         your experience and security.
       </p>
     <![endif]-->
-<?php include 'nav.php'; ?>
+<?php include '../nav.php'; ?>
     <!-- Start Hero Area -->
     <section id="home" class="hero-area">
         <div class="container">
@@ -31,7 +31,7 @@
                 </div>
                 <div class="col-lg-7 col-md-12 col-12">
                     <div class="hero-image wow fadeInRight" data-wow-delay=".4s">
-                        <img src="assets/images/hero/phone.png" alt="#">
+                        <img src="../assets/images/hero/phone.png" alt="#">
                     </div>
                 </div>
             </div>
@@ -68,7 +68,7 @@
         </div>
     </section>
     <!-- End Features Area -->
-    <?php include 'footer.php'; ?>
+    <?php include '../footer.php'; ?>
 </body>
 
 </html>

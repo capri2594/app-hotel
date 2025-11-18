@@ -1,6 +1,6 @@
 <?php
 session_start();
-include '../conexion.php';
+include 'conexion.php';
 
 // Recibir datos
 $usuario = $_POST['usuario'] ?? '';
@@ -10,7 +10,7 @@ if (empty($usuario) || empty($contrasena)) {
     echo "⚠️ Todos los campos son requeridos.";
     exit;
 }
-$password_md5 = md5($password
+$password_md5 = md5($password);
 // Buscar en la base de datos
 $sql = "SELECT * FROM usuario WHERE usuario = ? AND contrasena = ?";
 $stmt = $conexion->prepare($sql);
@@ -24,13 +24,13 @@ if ($resultado->num_rows === 1) {
     $_SESSION['usuario_id'] = $usuario['id'];
 
     // Redireccionar
-    header("Location: create.php");
+    header("Location: habitacion/index.php");
     exit;
 } else {
     // Datos incorrectos
     echo "<script>
         alert('❌ Usuario o contrasena incorrecto');
-        window.location.href = 'index1.php'; // Vuelve al formulario
+        window.location.href = 'index.php'; // Vuelve al formulario
     </script>";
 }
 ?>

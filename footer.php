@@ -9,7 +9,7 @@
                         <div class="single-footer f-about">
                             <div class="logo">
                                 <a href="index.html">
-                                    <img src="assets/images/logo/white-logo.svg" alt="#">
+                                    <img src="../assets/images/logo/logo.png" alt="#">
                                 </a>
                             </div>
                             <p>Making the world a better place through constructing elegant hierarchies.</p>
@@ -100,12 +100,12 @@
     </a>
 
     <!-- ========================= JS here ========================= -->
-    <script src="assets/js/bootstrap.min.js"></script>
-    <script src="assets/js/wow.min.js"></script>
-    <script src="assets/js/tiny-slider.js"></script>
-    <script src="assets/js/glightbox.min.js"></script>
-    <script src="assets/js/count-up.min.js"></script>
-    <script src="assets/js/main.js"></script>
+    <script src="../assets/js/bootstrap.min.js"></script>
+    <script src="../assets/js/wow.min.js"></script>
+    <script src="../assets/js/tiny-slider.js"></script>
+    <script src="../assets/js/glightbox.min.js"></script>
+    <script src="../assets/js/count-up.min.js"></script>
+    <script src="../assets/js/main.js"></script>
     <script type="text/javascript">
 
         //====== counter up 
@@ -118,6 +118,3 @@
         });
         cu.start();
     </script>
-</body>
-
-</html>
