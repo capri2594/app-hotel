@@ -1,0 +1,5 @@
+/* Solución al conflicto entre main.css y la paginación de Bootstrap 5 / DataTables */
+.dataTables_wrapper .pagination {
+    display: flex !important;
+    margin: 0 !important;
+}

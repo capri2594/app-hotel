@@ -35,6 +35,9 @@ while ($r = $res_roles->fetch_assoc()) {
 
 <?php include '../header.php'; ?>
 
+<!-- CSS de DataTables para Bootstrap 5 -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+
 <body class="bg-light py-4">
   <div class="container">
     
@@ -60,9 +63,9 @@ while ($r = $res_roles->fetch_assoc()) {
     </div>
 
     <div class="card shadow-sm border-0 rounded-3">
-      <div class="card-body p-0">
+      <div class="card-body p-4">
         <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+          <table id="tablaFuncionarios" class="table table-hover align-middle mb-0" style="width: 100%;">
             <thead class="table-light text-secondary">
               <tr>
                 <th class="ps-4">#</th>
@@ -300,53 +303,24 @@ while ($r = $res_roles->fetch_assoc()) {
   <!-- JS de Bootstrap -->
   <script src="../assets/js/bootstrap.min.js"></script>
   
-  <!-- Script para Autocompletar Cuenta de Acceso -->
+  <!-- JS de jQuery y DataTables -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+  <!-- Scripts personalizados de la aplicación -->
+  <script src="../assets/js/habitapp.js"></script>
+  
+  <!-- Script de inicialización para esta página específica -->
   <script>
-    async function sugerirCredenciales() {
-        let nombre = document.getElementById('nombre').value.trim().toLowerCase();
-        let paterno = document.getElementById('paterno').value.trim().toLowerCase();
-        let ci = document.getElementById('ci').value.trim();
-        
-        if (nombre.length > 0 && paterno.length > 0) {
-            // Primera letra del nombre concatenada con el apellido paterno sin espacios
-            let usuarioGen = nombre.charAt(0) + paterno.replace(/\s+/g, '');
-            document.getElementById('usuario').value = usuarioGen;
-            verificarUsuario(usuarioGen); // Validar automáticamente en tiempo real
-        }
-        if (ci.length > 0) {
-            document.getElementById('password').value = ci;
-        }
-    }
-
-    async function verificarUsuario(usuario) {
-        let feedback = document.getElementById('usuario_feedback');
-        if (usuario.length === 0) {
-            feedback.innerHTML = "";
-            return;
-        }
-        try {
-            let response = await fetch('check_username.php?u=' + encodeURIComponent(usuario));
-            let result = await response.json();
-            if (result.existe) {
-                let html = "<span class='text-danger fw-bold mb-1 d-block'>⚠️ Este usuario ya existe. Sugerencias:</span>";
-                if (result.sugerencias) {
-                    result.sugerencias.forEach(sug => {
-                        html += `<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 me-1 fw-bold" onclick="usarSugerencia('${sug}')">${sug}</button>`;
-                    });
-                }
-                feedback.innerHTML = html;
-            } else {
-                feedback.innerHTML = "<span class='text-success fw-bold'>✅ Nombre de usuario disponible.</span>";
-            }
-        } catch (error) {
-            console.error("Error al validar el usuario", error);
-        }
-    }
-
-    function usarSugerencia(sug) {
-        document.getElementById('usuario').value = sug;
-        verificarUsuario(sug); // Vuelve a validar para mostrar el mensaje de éxito (verde)
-    }
+    // Inicializar DataTables
+    $(document).ready(function() {
+        $('#tablaFuncionarios').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
+            },
+            "columnDefs": [{ "orderable": false, "targets": 7 }] // Ocultar ordenamiento en la columna "Acciones" (Índice 7)
+        });
+    });
   </script>
 </body>
 </html>
