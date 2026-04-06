@@ -1,4 +1,19 @@
-<?php include '../conexion.php'; ?>
+<?php
+session_start();
+
+// Validar si el usuario está logueado
+if (!isset($_SESSION['usuario_id'])) {
+    header("Location: ../index.php");
+    exit;
+}
+
+// Evitar que el navegador guarde caché de esta página
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
+include '../conexion.php'; 
+?>
 <!DOCTYPE html>
 <html class="no-js" lang="zxx">
 
@@ -36,36 +51,8 @@ if ($resultado && $resultado->num_rows > 0) {
     }
 }
 ?>
-<body>
-  <?php include '../nav.php'; ?>
-    <!-- Start Hero Area -->
-    <section id="home" class="hero-area">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-5 col-md-12 col-12">
-                    <div class="hero-content">
-                        <h1 class="wow fadeInLeft" data-wow-delay=".4s">A powerful app for your business.</h1>
-                        <p class="wow fadeInLeft" data-wow-delay=".6s">From open source to pro services, Piqes helps you
-                            to build, deploy, test, and monitor apps.</p>
-                        <div class="button wow fadeInLeft" data-wow-delay=".8s">
-                            <a href="javascript:void(0)" class="btn"><i class="lni lni-apple"></i> App Store</a>
-                            <a href="javascript:void(0)" class="btn btn-alt"><i class="lni lni-play-store"></i> Google
-                                Play</a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-7 col-md-12 col-12">
-                    <div class="hero-image wow fadeInRight" data-wow-delay=".4s">
-                        <img src="../assets/images/hero/phone.png" alt="#">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-    <!-- End Hero Area -->
-    <!-- Start Features Area -->
-    <section id="features" class="features section">
-      <div class="container">
+<body class="bg-light py-4">
+    <div class="container">
         <div class="row">
           <div class="col-12">
             <div class="section-title">
@@ -115,10 +102,8 @@ if ($resultado && $resultado->num_rows > 0) {
                     </tr>
                   </tbody>
                 </table>
-</div>
-      </div>
-    </section>
-  <div class="table-responsive">
+        </div>
+        <div class="table-responsive">
     <table class="table table-bordered table-sm text-center align-middle" style="table-layout: fixed;">
       <tbody>
         <!-- 🔼 Fila superior dinámica -->
@@ -225,9 +210,7 @@ if ($resultado && $resultado->num_rows > 0) {
   </div>
 </div>
 
-    
-    <!-- End Features Area -->
-    <?php include '../footer.php'; ?>
+    <script src="../assets/js/bootstrap.min.js"></script>
 </body>
 
 </html>

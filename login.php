@@ -15,7 +15,7 @@ if (empty($usuario) || empty($password)) {
 $password_md5 = md5($password);
 
 // Buscar en la base de datos haciendo JOIN para obtener datos del funcionario y su rol
-$sql = "SELECT u.id as usuario_id, f.id as funcionario_id, f.nombres, f.apellidos, r.nombre as rol_nombre 
+$sql = "SELECT u.id as usuario_id, f.id as funcionario_id, f.nombre, f.paterno, f.materno, r.nombre as rol_nombre 
         FROM usuario u 
         INNER JOIN funcionario f ON u.funcionario_id = f.id 
         INNER JOIN rol r ON f.rol_id = r.id 
@@ -31,10 +31,10 @@ if ($resultado->num_rows === 1) {
     $_SESSION['usuario_id'] = $datos_usuario['usuario_id'];
     $_SESSION['funcionario_id'] = $datos_usuario['funcionario_id'];
     $_SESSION['rol'] = $datos_usuario['rol_nombre'];
-    $_SESSION['nombre_completo'] = $datos_usuario['nombres'] . ' ' . $datos_usuario['apellidos'];
+    $_SESSION['nombre_completo'] = $datos_usuario['nombre'] . ' ' . $datos_usuario['paterno'];
 
     // Redireccionar
-    header("Location: funcionario/index.php");
+    header("Location: dashboard.php");
     exit;
 } else {
     // Datos incorrectos
