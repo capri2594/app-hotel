@@ -182,13 +182,25 @@ CREATE TABLE `pagos` (
 
 CREATE TABLE `reservas` (
   `id` int(11) NOT NULL,
-  `habitacion_id` int(11) NOT NULL,
   `nombre` varchar(150) NOT NULL,
   `ci` varchar(20) NOT NULL,
   `telefono` varchar(20) DEFAULT NULL,
   `fecha_ingreso` date NOT NULL,
   `fecha_salida` date NOT NULL,
-  `estado` enum('PENDIENTE','CONFIRMADA','FINALIZADA','CANCELADA') DEFAULT 'PENDIENTE'
+  `estado` enum('PENDIENTE','CONFIRMADA','FINALIZADA','CANCELADA') DEFAULT 'PENDIENTE',
+  `total` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `detalle_reserva`
+--
+CREATE TABLE `detalle_reserva` (
+  `id` int(11) NOT NULL,
+  `reserva_id` int(11) NOT NULL,
+  `habitacion_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -221,17 +233,18 @@ INSERT INTO `rol` (`id`, `nombre`, `descripcion`) VALUES
 CREATE TABLE `tipo_habitacion` (
   `id_tipo` int(11) NOT NULL,
   `codigo` varchar(20) NOT NULL,
-  `nombre` varchar(100) NOT NULL
+  `nombre` varchar(100) NOT NULL,
+  `precio` decimal(10,2) NOT NULL DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipo_habitacion`
 --
 
-INSERT INTO `tipo_habitacion` (`id_tipo`, `codigo`, `nombre`) VALUES
-(1, 'SGL', 'Habitación Simple'),
-(2, 'DBL', 'Habitación Doble'),
-(3, 'MAT', 'Habitación Matrimonial');
+INSERT INTO `tipo_habitacion` (`id_tipo`, `codigo`, `nombre`, `precio`) VALUES
+(1, 'SGL', 'Habitación Simple', 150.00),
+(2, 'DBL', 'Habitación Doble', 250.00),
+(3, 'MAT', 'Habitación Matrimonial', 350.00);
 
 -- --------------------------------------------------------
 
@@ -289,7 +302,14 @@ ALTER TABLE `pagos`
 -- Indices de la tabla `reservas`
 --
 ALTER TABLE `reservas`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `detalle_reserva`
+--
+ALTER TABLE `detalle_reserva`
   ADD PRIMARY KEY (`id`),
+  ADD KEY `reserva_id` (`reserva_id`),
   ADD KEY `habitacion_id` (`habitacion_id`);
 
 --
@@ -342,6 +362,12 @@ ALTER TABLE `reservas`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `detalle_reserva`
+--
+ALTER TABLE `detalle_reserva`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `rol`
 --
 ALTER TABLE `rol`
@@ -382,10 +408,11 @@ ALTER TABLE `pagos`
   ADD CONSTRAINT `pagos_ibfk_1` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`id`);
 
 --
--- Filtros para la tabla `reservas`
+-- Filtros para la tabla `detalle_reserva`
 --
-ALTER TABLE `reservas`
-  ADD CONSTRAINT `reservas_ibfk_1` FOREIGN KEY (`habitacion_id`) REFERENCES `habitacion` (`id_habitacion`);
+ALTER TABLE `detalle_reserva`
+  ADD CONSTRAINT `detalle_reserva_ibfk_1` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `detalle_reserva_ibfk_2` FOREIGN KEY (`habitacion_id`) REFERENCES `habitacion` (`id_habitacion`);
 
 --
 -- Filtros para la tabla `usuario`
