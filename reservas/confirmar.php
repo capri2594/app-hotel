@@ -29,7 +29,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_habitacion->execute();
 
             $conexion->commit();
-            header("Location: index.php?msg=La reserva web fue aprobada. Las habitaciones ya figuran como RESERVADA en el mapa.");
+            
+            // === PREPARAR MENSAJE DE WHATSAPP ===
+            $stmt_info = $conexion->prepare("SELECT nombre, telefono FROM reservas WHERE id = ?");
+            $stmt_info->bind_param("i", $id_reserva);
+            $stmt_info->execute();
+            $info = $stmt_info->get_result()->fetch_assoc();
+            
+            $wa_url = "";
+            if ($info && !empty($info['telefono'])) {
+                $tel_limpio = preg_replace('/[^0-9]/', '', $info['telefono']); // Extraer solo números
+                $mensaje = "🏨 *HabitApp - Confirmación de Pre-Reserva*\n\nHola *" . trim($info['nombre']) . "*,\n\nTu solicitud de reserva *Nº " . $id_reserva . "* ha sido *APROBADA* ✅.\n\nTe recordamos que esta es una Pre-Reserva válida por 12 horas. El pago y registro final se realizarán en Recepción al momento de tu llegada.\n\n¡Te esperamos!";
+                $wa_url = "&wa=" . urlencode("https://api.whatsapp.com/send?phone=" . $tel_limpio . "&text=" . urlencode($mensaje));
+            }
+
+            header("Location: index.php?msg=" . urlencode("La reserva web fue aprobada. Las habitaciones ya figuran como RESERVADA en el mapa.") . $wa_url);
         } catch (Exception $e) {
             $conexion->rollback();
             header("Location: index.php?error=Ocurrió un error al procesar la confirmación.");

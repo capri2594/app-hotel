@@ -153,14 +153,14 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                     case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; break;
                                     default:               $gif = 'default.gif'; break;
                                   }
-                                  echo '<td style="position: relative; height: 120px; '.$bg_td.'">';
+                                echo '<td style="position: relative; height: 120px; overflow: hidden; '.$bg_td.'">';
                                   echo $foquito;
                                   if ($estado == 'DISPONIBLE') { echo '<form action="reservar.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; }
                                   echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br>'.htmlspecialchars($hab['nombre']).'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
                                   if ($estado == 'DISPONIBLE') { echo '</button></form>'; }
                                   echo '</td>';
                                 } else {
-                                  echo '<td style="position: relative; height: 120px;">' . $n . '</td>';
+                                echo '<td style="position: relative; height: 120px; overflow: hidden;">' . $n . '</td>';
                                 }
                               }
                               ?>
@@ -188,14 +188,14 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                     case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; break;
                                     default:               $gif = 'default.gif'; break;
                                   }
-                                  echo '<td style="position: relative; height: 120px; '.$bg_td.'">';
+                                echo '<td style="position: relative; height: 120px; overflow: hidden; '.$bg_td.'">';
                                   echo $foquito;
                                   if ($estado == 'DISPONIBLE') { echo '<form action="reservar.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; }
                                   echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br>'.htmlspecialchars($hab['nombre']).'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
                                   if ($estado == 'DISPONIBLE') { echo '</button></form>'; }
                                   echo '</td>';
                                 } else {
-                                  echo '<td style="position: relative; height: 120px;">' . $n . '</td>';
+                                echo '<td style="position: relative; height: 120px; overflow: hidden;">' . $n . '</td>';
                                 }
                               }
 
@@ -216,7 +216,7 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                     case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; break;
                                     default:               $gif = 'default.gif'; break;
                                   }
-                                  echo '<td style="position: relative; height: 120px; '.$bg_td.'">';
+                                  echo '<td style="position: relative; height: 120px; overflow: hidden; '.$bg_td.'">';
                                   echo $foquito;
                                   
                                   // Botón "Poner en Mantenimiento" (Engranaje)
@@ -232,7 +232,7 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                   if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '</button></form>'; }
                                   echo '</td>';
                                 } else {
-                                  echo '<td style="position: relative; height: 120px;">' . $n . '</td>';
+                                  echo '<td style="position: relative; height: 120px; overflow: hidden;">' . $n . '</td>';
                                 }
                               }
                               ?>

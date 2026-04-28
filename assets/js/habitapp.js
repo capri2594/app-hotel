@@ -129,4 +129,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Seleccionar Bolivia por defecto
         $('.select2-country').val('+591').trigger('change');
     }
+
+    // 5. Auto-abrir enlace de WhatsApp si existe en la vista
+    const btnAutoWA = document.getElementById('btnAutoWA');
+    if (btnAutoWA) {
+        window.open(btnAutoWA.href, '_blank');
+    }
 });

@@ -40,6 +40,12 @@ $resultado = $conexion->query($sql);
     <?php if (isset($_GET['msg'])): ?>
         <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
             <i class="lni lni-checkmark-circle me-1"></i> <?= htmlspecialchars($_GET['msg']) ?>
+            <?php if (isset($_GET['wa'])): ?>
+                <hr class="my-2">
+                <a href="<?= htmlspecialchars($_GET['wa']) ?>" id="btnAutoWA" target="_blank" class="btn btn-success fw-bold shadow-sm mt-1">
+                    <i class="lni lni-whatsapp me-1"></i> Enviar Confirmación por WhatsApp
+                </a>
+            <?php endif; ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php endif; ?>
@@ -80,7 +86,13 @@ $resultado = $conexion->query($sql);
                     <td class="ps-4 fw-bold text-muted"><?= $fila['id'] ?></td>
                     <td>
                         <strong><?= htmlspecialchars($fila['nombre'] ?? '') ?></strong><br>
-                        <small class="text-muted"><i class="lni lni-phone me-1"></i><?= htmlspecialchars($fila['telefono'] ?? '') ?></small>
+                        <small class="text-muted">
+                            <i class="lni lni-phone me-1"></i><?= htmlspecialchars($fila['telefono'] ?? '') ?>
+                            <?php if(!empty($fila['telefono'])): ?>
+                                <?php $tel_limpio = preg_replace('/[^0-9]/', '', $fila['telefono']); ?>
+                                <a href="https://wa.me/<?= $tel_limpio ?>?text=<?= urlencode('Hola ' . trim($fila['nombre']) . ', te escribimos de HabitApp...') ?>" target="_blank" class="text-success ms-1 fs-6" title="Abrir Chat"><i class="lni lni-whatsapp"></i></a>
+                            <?php endif; ?>
+                        </small>
                     </td>
                     <td>
                         <span class="badge bg-dark fs-6"><?= htmlspecialchars($fila['numeros_habitaciones'] ?? 'Sin Asignar') ?></span><br>
