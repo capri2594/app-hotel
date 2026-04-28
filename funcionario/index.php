@@ -222,10 +222,6 @@ while ($r = $res_roles->fetch_assoc()) {
                   <?php endif; ?>
 
                 <?php endwhile; ?>
-              <?php else: ?>
-                <tr>
-                  <td colspan="7" class="text-center py-4 text-muted">No se encontraron funcionarios registrados en el sistema.</td>
-                </tr>
               <?php endif; ?>
             </tbody>
           </table>
@@ -309,18 +305,5 @@ while ($r = $res_roles->fetch_assoc()) {
   <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
   <!-- Scripts personalizados de la aplicación -->
   <script src="../assets/js/habitapp.js"></script>
-  
-  <!-- Script de inicialización para esta página específica -->
-  <script>
-    // Inicializar DataTables
-    $(document).ready(function() {
-        $('#tablaFuncionarios').DataTable({
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
-            },
-            "columnDefs": [{ "orderable": false, "targets": 7 }] // Ocultar ordenamiento en la columna "Acciones" (Índice 7)
-        });
-    });
-  </script>
 </body>
 </html>

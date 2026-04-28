@@ -9,6 +9,9 @@ if (!isset($_SESSION['usuario_id'])) {
 
 include '../conexion.php';
 
+// LIMPIEZA AUTOMÁTICA: Cancelar reservas web pendientes con más de 12 horas
+$conexion->query("UPDATE reservas SET estado = 'CANCELADA' WHERE estado = 'PENDIENTE' AND created_at <= NOW() - INTERVAL 12 HOUR");
+
 // Obtener todas las reservas ordenadas por las más recientes
 $sql = "SELECT r.*, 
                GROUP_CONCAT(h.numero SEPARATOR ', ') as numeros_habitaciones,
@@ -74,23 +77,24 @@ $resultado = $conexion->query($sql);
               <?php if ($resultado && $resultado->num_rows > 0): ?>
                 <?php while ($fila = $resultado->fetch_assoc()): ?>
                   <tr>
-                    <td class="ps-4 fw-bold text-muted">#<?= $fila['id'] ?></td>
+                    <td class="ps-4 fw-bold text-muted"><?= $fila['id'] ?></td>
                     <td>
-                        <strong><?= htmlspecialchars($fila['nombre']) ?></strong><br>
-                        <small class="text-muted"><i class="lni lni-phone me-1"></i><?= htmlspecialchars($fila['telefono']) ?></small>
+                        <strong><?= htmlspecialchars($fila['nombre'] ?? '') ?></strong><br>
+                        <small class="text-muted"><i class="lni lni-phone me-1"></i><?= htmlspecialchars($fila['telefono'] ?? '') ?></small>
                     </td>
                     <td>
-                        <span class="badge bg-dark fs-6"><?= htmlspecialchars($fila['numeros_habitaciones']) ?></span><br>
-                        <small class="text-muted"><?= htmlspecialchars($fila['tipos_habitaciones']) ?> (<?= $fila['total_habitaciones'] ?> habs)</small>
+                        <span class="badge bg-dark fs-6"><?= htmlspecialchars($fila['numeros_habitaciones'] ?? 'Sin Asignar') ?></span><br>
+                        <small class="text-muted"><?= htmlspecialchars($fila['tipos_habitaciones'] ?? 'N/A') ?> (<?= $fila['total_habitaciones'] ?? 0 ?> habs)</small>
                     </td>
-                    <td><?= date('d/m/Y', strtotime($fila['fecha_ingreso'])) ?></td>
-                    <td><?= date('d/m/Y', strtotime($fila['fecha_salida'])) ?></td>
-                    <td class="fw-bold text-success"><?= number_format($fila['total'], 2) ?></td>
+                    <td><?= !empty($fila['fecha_ingreso']) ? date('d/m/Y', strtotime($fila['fecha_ingreso'])) : 'N/A' ?></td>
+                    <td><?= !empty($fila['fecha_salida']) ? date('d/m/Y', strtotime($fila['fecha_salida'])) : 'N/A' ?></td>
+                    <td class="fw-bold text-success"><?= number_format((float)($fila['total'] ?? 0), 2) ?></td>
                     <td>
                       <?php 
                         $badge_class = 'bg-secondary';
                         if($fila['estado'] == 'PENDIENTE') $badge_class = 'bg-warning text-dark';
                         if($fila['estado'] == 'CONFIRMADA') $badge_class = 'bg-primary';
+                        if($fila['estado'] == 'EN_CURSO') $badge_class = 'bg-info text-dark';
                         if($fila['estado'] == 'FINALIZADA') $badge_class = 'bg-success';
                         if($fila['estado'] == 'CANCELADA') $badge_class = 'bg-danger';
                       ?>
@@ -102,65 +106,17 @@ $resultado = $conexion->query($sql);
                           <button type="button" class="btn btn-sm btn-success fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalConfirmar<?= $fila['id'] ?>">
                             <i class="lni lni-checkmark"></i> Confirmar
                           </button>
+                      <?php elseif ($fila['estado'] == 'CONFIRMADA'): ?>
+                          <!-- Botón Check-in -->
+                          <button type="button" class="btn btn-sm btn-info fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalCheckin<?= $fila['id'] ?>">
+                            <i class="lni lni-enter"></i> Check-in
+                          </button>
                       <?php else: ?>
                           <button class="btn btn-sm btn-light text-muted" disabled>Sin acciones</button>
                       <?php endif; ?>
                     </td>
                   </tr>
-
-                  <?php if ($fila['estado'] == 'PENDIENTE'): ?>
-                  <!-- Modal de Confirmación y Pago -->
-                  <div class="modal fade" id="modalConfirmar<?= $fila['id'] ?>" tabindex="-1" aria-labelledby="modalConfirmarLabel<?= $fila['id'] ?>" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 shadow-lg">
-                            <div class="modal-header bg-success text-white">
-                                <h5 class="modal-title fw-bold text-white" id="modalConfirmarLabel<?= $fila['id'] ?>"><i class="lni lni-checkmark-circle me-1"></i> Confirmar Reserva #<?= $fila['id'] ?></h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body p-4 text-start">
-                                <form action="confirmar.php" method="POST">
-                                    <input type="hidden" name="id" value="<?= $fila['id'] ?>">
-                                    
-                                    <div class="alert alert-warning mb-4">
-                                        <i class="lni lni-warning me-1"></i> Al confirmar, las habitaciones <strong><?= htmlspecialchars($fila['numeros_habitaciones']) ?></strong> pasarán a estado <strong>RESERVADA</strong> en el mapa.
-                                    </div>
-
-                                    <div class="alert alert-info mb-4">
-                                        <h6 class="fw-bold mb-1"><i class="lni lni-invest-monitor me-1"></i> Resumen de Estadía:</h6>
-                                        <p class="mb-0 small text-dark">El costo total calculado por <strong><?= $fila['total_habitaciones'] ?> hab(s)</strong> es de <strong class="fs-6 text-primary">Bs. <?= number_format($fila['total'], 2) ?></strong>.</p>
-                                    </div>
-
-                                    <h5 class="fw-bold fs-6 mb-3 text-dark"><i class="lni lni-wallet text-success me-1"></i> Registro de Pago (Adelanto/Total)</h5>
-                                    
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold text-secondary">Método de Pago</label>
-                                        <select class="form-select bg-light" name="tipo_pago" required>
-                                            <option value="EFECTIVO" selected>💵 Efectivo</option>
-                                            <option value="DEPOSITO">🏦 Depósito Bancario</option>
-                                            <option value="QR">📱 Transferencia QR</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-4">
-                                        <label class="form-label fw-bold text-secondary">Monto a Registrar (Bs.)</label>
-                                        <input type="number" step="0.01" min="0" class="form-control form-control-lg bg-light text-success fw-bold" name="monto" value="0.00" required>
-                                        <div class="form-text">Si no deja adelanto, mantenga el monto en 0.00</div>
-                                    </div>
-                                    
-                                    <div class="modal-footer px-0 pb-0 mt-4">
-                                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-success fw-bold shadow-sm">Confirmar y Guardar</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                  </div>
-                  <?php endif; ?>
                 <?php endwhile; ?>
-              <?php else: ?>
-                <tr>
-                  <td colspan="7" class="text-center py-4 text-muted">No hay reservas registradas.</td>
-                </tr>
               <?php endif; ?>
             </tbody>
           </table>
@@ -168,6 +124,100 @@ $resultado = $conexion->query($sql);
       </div>
     </div>
   </div>
+
+  <!-- ========================= MODALES (Fuera de la tabla) ========================= -->
+  <?php if ($resultado && $resultado->num_rows > 0): ?>
+    <?php $resultado->data_seek(0); // Reiniciamos el puntero de base de datos ?>
+    <?php while ($fila = $resultado->fetch_assoc()): ?>
+      <?php if ($fila['estado'] == 'PENDIENTE'): ?>
+      <!-- Modal de Confirmación y Pago -->
+      <div class="modal fade" id="modalConfirmar<?= $fila['id'] ?>" tabindex="-1" aria-labelledby="modalConfirmarLabel<?= $fila['id'] ?>" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold text-white" id="modalConfirmarLabel<?= $fila['id'] ?>"><i class="lni lni-checkmark-circle me-1"></i> Confirmar Reserva Nº<?= $fila['id'] ?></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-start">
+                    <form action="confirmar.php" method="POST">
+                        <input type="hidden" name="id" value="<?= $fila['id'] ?>">
+                        
+                        <div class="alert alert-warning mb-4">
+                            <i class="lni lni-warning me-1"></i> Al confirmar, las habitaciones <strong><?= htmlspecialchars($fila['numeros_habitaciones'] ?? 'Sin Asignar') ?></strong> pasarán a estado <strong>RESERVADA</strong> en el mapa.
+                        </div>
+
+                        <div class="alert alert-info mb-4">
+                            <h6 class="fw-bold mb-1"><i class="lni lni-invest-monitor me-1"></i> Resumen de Estadía:</h6>
+                            <p class="mb-0 small text-dark">El costo total calculado por <strong><?= $fila['total_habitaciones'] ?? 0 ?> hab(s)</strong> es de <strong class="fs-6 text-primary">Bs. <?= number_format((float)($fila['total'] ?? 0), 2) ?></strong>.</p>
+                        </div>
+
+                        <p class="text-muted small mb-0"><i class="lni lni-bulb me-1"></i> <strong>Nota para Recepción:</strong> Al aprobar esta reserva solo confirmas la disponibilidad de los cuartos. El cobro, el cálculo de cambio y la foto del documento se realizarán en el paso de <strong>Check-in</strong> (cuando el cliente llegue al hotel).</p>
+                        
+                        <div class="modal-footer px-0 pb-0 mt-4">
+                            <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-success fw-bold shadow-sm">Aprobar Reserva</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+      </div>
+      <?php elseif ($fila['estado'] == 'CONFIRMADA'): ?>
+      <!-- Modal de Check-in y Cobro -->
+      <div class="modal fade" id="modalCheckin<?= $fila['id'] ?>" tabindex="-1" aria-labelledby="modalCheckinLabel<?= $fila['id'] ?>" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-info text-dark">
+                    <h5 class="modal-title fw-bold" id="modalCheckinLabel<?= $fila['id'] ?>"><i class="lni lni-enter me-1"></i> Consolidar Check-in Nº<?= $fila['id'] ?></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <!-- enctype multipart es VITAL para poder subir fotos -->
+                <form action="store_checkin.php" method="POST" enctype="multipart/form-data">
+                    <div class="modal-body p-4 text-start">
+                        <input type="hidden" name="id" value="<?= $fila['id'] ?>">
+                        <input type="hidden" name="total_pagar" value="<?= $fila['total'] ?>">
+
+                        <div class="row">
+                            <div class="col-md-6 border-end pe-4">
+                                <h6 class="fw-bold mb-3 text-dark"><i class="lni lni-camera me-1"></i> 1. Documento de Identidad</h6>
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small">Fotografía del CI / Pasaporte</label>
+                                    <input class="form-control" type="file" name="foto_ci" accept="image/*" required>
+                                    <div class="form-text">Asegúrese de que los datos sean legibles.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 ps-4">
+                                <h6 class="fw-bold mb-3 text-dark"><i class="lni lni-wallet me-1"></i> 2. Registro de Pago</h6>
+                                <div class="alert alert-light border shadow-sm text-center py-2 mb-3">
+                                    <span class="d-block small text-muted">Total a Cobrar</span>
+                                    <strong class="fs-3 text-primary">Bs. <?= number_format((float)($fila['total'] ?? 0), 2) ?></strong>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small">Método de Pago</label>
+                                    <select class="form-select bg-light" name="tipo_pago" required>
+                                        <option value="EFECTIVO" selected>💵 Efectivo</option>
+                                        <option value="QR">📱 Transferencia QR</option>
+                                        <option value="DEPOSITO">🏦 Depósito Bancario</option>
+                                    </select>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6"><label class="form-label text-secondary small">Efectivo Recibido</label><input type="number" step="0.01" min="<?= $fila['total'] ?>" class="form-control text-success fw-bold" name="monto_recibido" id="recibido_<?= $fila['id'] ?>" placeholder="0.00" oninput="calcularCambio(<?= $fila['id'] ?>, <?= $fila['total'] ?>)" required></div>
+                                    <div class="col-6"><label class="form-label text-secondary small">Cambio a Devolver</label><input type="text" class="form-control bg-light text-success fw-bold" name="cambio" id="cambio_<?= $fila['id'] ?>" value="0.00" readonly></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light mt-2">
+                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-info text-dark fw-bold shadow-sm"><i class="lni lni-key me-1"></i> Finalizar Check-in y Entregar Llaves</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      </div>
+      <?php endif; ?>
+    <?php endwhile; ?>
+  <?php endif; ?>
 
   <!-- JS de Bootstrap -->
   <script src="../assets/js/bootstrap.min.js"></script>
@@ -177,17 +227,5 @@ $resultado = $conexion->query($sql);
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
   <script src="../assets/js/habitapp.js"></script>
-  
-  <script>
-    $(document).ready(function() {
-        $('#tablaReservas').DataTable({
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
-            },
-            "order": [[ 0, "desc" ]], // Ordenar por ID descendente (las más nuevas primero)
-            "columnDefs": [{ "orderable": false, "targets": 7 }]
-        });
-    });
-  </script>
 </body>
 </html>

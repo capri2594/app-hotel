@@ -58,10 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            $password_md5 = md5($password);
+            $password_hashed = password_hash($password, PASSWORD_BCRYPT);
             $sql_user = "INSERT INTO usuario (funcionario_id, usuario, password) VALUES (?, ?, ?)";
             $stmt_user = $conexion->prepare($sql_user);
-            $stmt_user->bind_param("iss", $funcionario_id, $usuario_final, $password_md5);
+            $stmt_user->bind_param("iss", $funcionario_id, $usuario_final, $password_hashed);
             $stmt_user->execute();
         }
 

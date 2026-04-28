@@ -11,8 +11,6 @@ include '../conexion.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id_reserva = intval($_POST['id'] ?? 0);
-    $tipo_pago = $_POST['tipo_pago'] ?? 'EFECTIVO';
-    $monto = floatval($_POST['monto'] ?? 0);
 
     if ($id_reserva > 0) {
         
@@ -30,15 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_habitacion->bind_param("i", $id_reserva);
             $stmt_habitacion->execute();
 
-            // 3. Registrar el pago si el monto es mayor a 0
-            if ($monto > 0) {
-                $stmt_pago = $conexion->prepare("INSERT INTO pagos (reserva_id, tipo_pago, monto) VALUES (?, ?, ?)");
-                $stmt_pago->bind_param("isd", $id_reserva, $tipo_pago, $monto);
-                $stmt_pago->execute();
-            }
-
             $conexion->commit();
-            header("Location: index.php?msg=La reserva fue confirmada, las habitaciones bloqueadas y el pago registrado con éxito.");
+            header("Location: index.php?msg=La reserva web fue aprobada. Las habitaciones ya figuran como RESERVADA en el mapa.");
         } catch (Exception $e) {
             $conexion->rollback();
             header("Location: index.php?error=Ocurrió un error al procesar la confirmación.");

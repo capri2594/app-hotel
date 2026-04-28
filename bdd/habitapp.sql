@@ -171,6 +171,8 @@ CREATE TABLE `pagos` (
   `reserva_id` int(11) NOT NULL,
   `tipo_pago` enum('EFECTIVO','DEPOSITO','QR') NOT NULL,
   `monto` decimal(10,2) NOT NULL,
+  `monto_recibido` decimal(10,2) DEFAULT NULL,
+  `cambio` decimal(10,2) DEFAULT NULL,
   `fecha` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -187,8 +189,9 @@ CREATE TABLE `reservas` (
   `telefono` varchar(20) DEFAULT NULL,
   `fecha_ingreso` date NOT NULL,
   `fecha_salida` date NOT NULL,
-  `estado` enum('PENDIENTE','CONFIRMADA','FINALIZADA','CANCELADA') DEFAULT 'PENDIENTE',
+  `estado` enum('PENDIENTE','CONFIRMADA','EN_CURSO','FINALIZADA','CANCELADA') DEFAULT 'PENDIENTE',
   `total` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `foto_ci` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

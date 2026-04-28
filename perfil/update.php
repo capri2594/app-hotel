@@ -48,10 +48,10 @@ if ($action === 'update_user') {
         exit;
     }
     
-    $password_md5 = md5($password);
+    $password_hashed = password_hash($password, PASSWORD_BCRYPT);
     $sql = "UPDATE usuario SET password = ? WHERE id = ?";
     $stmt = $conexion->prepare($sql);
-    $stmt->bind_param("si", $password_md5, $usuario_id);
+    $stmt->bind_param("si", $password_hashed, $usuario_id);
     
     if ($stmt->execute()) {
         header("Location: ../dashboard.php?msg=Contraseña actualizada correctamente.");

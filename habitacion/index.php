@@ -13,6 +13,9 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
 include '../conexion.php'; 
+
+// LIMPIEZA AUTOMÁTICA: Cancelar reservas web pendientes con más de 12 horas
+$conexion->query("UPDATE reservas SET estado = 'CANCELADA' WHERE estado = 'PENDIENTE' AND created_at <= NOW() - INTERVAL 12 HOUR");
 ?>
 <!DOCTYPE html>
 <html class="no-js" lang="zxx">
@@ -78,7 +81,7 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
             <ul class="nav nav-pills justify-content-center gap-2" id="pisoTabs" role="tablist">
               <?php foreach($pisos as $index => $piso): ?>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link fw-bold px-4 <?= $index === 0 ? 'active shadow-sm' : 'bg-white text-secondary border' ?>" id="tab-piso-<?= $piso ?>" data-bs-toggle="pill" data-bs-target="#piso-<?= $piso ?>" type="button" role="tab" aria-controls="piso-<?= $piso ?>" aria-selected="<?= $index === 0 ? 'true' : 'false' ?>">
+              <button class="nav-link fw-bold px-4 shadow-sm <?= $index === 0 ? 'active' : '' ?>" id="tab-piso-<?= $piso ?>" data-bs-toggle="pill" data-bs-target="#piso-<?= $piso ?>" type="button" role="tab" aria-controls="piso-<?= $piso ?>" aria-selected="<?= $index === 0 ? 'true' : 'false' ?>">
                     <i class="lni lni-layers me-1"></i> Piso <?= $piso ?>
                   </button>
                 </li>
@@ -108,14 +111,6 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
               </tbody>
             </table>
         </div>
-
-        <!-- Estilos para el Foquito (Estilo Baliza / Sirena) -->
-        <style>
-            .foquito { position: absolute; top: 12px; right: 12px; width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 4px rgba(0,0,0,0.5); z-index: 10; animation: estrobo 2s infinite; }
-            .foquito::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; background-color: inherit; animation: onda 1.5s infinite ease-out; z-index: -1; }
-            @keyframes estrobo { 0%, 10%, 20%, 100% { opacity: 1; } 5%, 15% { opacity: 0.1; } }
-            @keyframes onda { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(4); opacity: 0; } }
-        </style>
 
         <!-- Contenedor Dinámico de Mapas -->
         <div class="tab-content" id="pisoTabsContent">
@@ -173,7 +168,7 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
 
                             <!-- 🟨 Fila central: PASILLO -->
                             <tr>
-                              <td colspan="10" class="bg-warning text-dark fw-bold border-warning" style="height: 40px; letter-spacing: 5px;">PASILLO PRINCIPAL PISO <?= $piso_actual ?></td>
+                              <td colspan="10" class="text-white fw-bold shadow-sm" style="background: linear-gradient(90deg, #680202 0%, #3a0d0d 100%); height: 40px; letter-spacing: 5px; border: none;">PASILLO PRINCIPAL PISO <?= $piso_actual ?></td>
                             </tr>
 
                             <!-- 🔽 Fila inferior dinámica con INGRESO -->
@@ -205,7 +200,7 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                               }
 
                               // INGRESO
-                              echo '<td colspan="2" class="bg-primary text-white fw-bold" style="height: 120px;">INGRESO</td>';
+                              echo '<td colspan="2" class="text-white fw-bold shadow-sm" style="background: linear-gradient(90deg, #680202 0%, #3a0d0d 100%); height: 120px; letter-spacing: 3px; border: none;">INGRESO</td>';
 
                               $ultimas = [$piso_base+4, $piso_base+3, $piso_base+2, $piso_base+1];
                               foreach ($ultimas as $n) {
@@ -223,9 +218,18 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                   }
                                   echo '<td style="position: relative; height: 120px; '.$bg_td.'">';
                                   echo $foquito;
-                                  if ($estado == 'DISPONIBLE') { echo '<form action="reservar.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; }
+                                  
+                                  // Botón "Poner en Mantenimiento" (Engranaje)
+                                  if ($estado == 'DISPONIBLE') { echo '<form action="toggle_mantenimiento.php" method="POST" style="position: absolute; top: 5px; left: 5px; z-index: 20; margin: 0;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="mantenimiento"><button type="submit" class="btn btn-sm text-secondary border-0 p-1" title="Poner en Mantenimiento" onclick="return confirm(\'¿Poner la habitación '.$hab['numero'].' en mantenimiento?\');"><i class="lni lni-cog"></i></button></form>'; }
+
+                                  // Botón Principal de la celda (Reservar o Habilitar)
+                                  if ($estado == 'DISPONIBLE') { 
+                                      echo '<form action="reservar.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; 
+                                  } elseif ($estado == 'MANTENIMIENTO') { 
+                                      echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
+                                  }
                                   echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br>'.htmlspecialchars($hab['nombre']).'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
-                                  if ($estado == 'DISPONIBLE') { echo '</button></form>'; }
+                                  if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '</button></form>'; }
                                   echo '</td>';
                                 } else {
                                   echo '<td style="position: relative; height: 120px;">' . $n . '</td>';

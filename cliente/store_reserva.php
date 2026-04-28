@@ -5,10 +5,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $nombre = trim($_POST['nombre'] ?? '');
     $ci = trim($_POST['ci'] ?? '');
-    $telefono = trim($_POST['telefono'] ?? '');
+    $codigo_pais = trim($_POST['codigo_pais'] ?? '+591');
+    $telefono_numero = trim($_POST['telefono'] ?? '');
+    $telefono = $codigo_pais . ' ' . $telefono_numero; // Concatenar para la BD
     $fecha_ingreso = $_POST['fecha_ingreso'] ?? '';
     $fecha_salida = $_POST['fecha_salida'] ?? '';
     $cantidades = $_POST['cantidades'] ?? []; // Array con las cantidades pedidas
+
+    // Validar longitud del documento de identidad (Previene spam de 1 o 2 letras)
+    if (strlen($ci) < 5) {
+        header("Location: index.php?error=El documento de identidad o pasaporte debe tener al menos 5 caracteres.");
+        exit;
+    }
+
+    // Validar que la fecha de ingreso no sea en el pasado (permite hoy)
+    $hoy = date('Y-m-d');
+    if (strtotime($fecha_ingreso) < strtotime($hoy)) {
+        header("Location: index.php?error=La fecha de ingreso no puede estar en el pasado.");
+        exit;
+    }
 
     // Validar que la fecha de salida sea mayor a la de ingreso
     if (strtotime($fecha_salida) <= strtotime($fecha_ingreso)) {
@@ -39,8 +54,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $habitaciones_a_reservar = [];
         $total_reserva = 0;
         
-        // Calcular cantidad de noches (Mínimo 1 noche)
-        $noches = max(1, round((strtotime($fecha_salida) - strtotime($fecha_ingreso)) / 86400));
+        // Calcular cantidad de noches usando DateTime (Evita bugs por husos horarios)
+        $fecha1 = new DateTime($fecha_ingreso);
+        $fecha2 = new DateTime($fecha_salida);
+        $diferencia = $fecha1->diff($fecha2);
+        $noches = max(1, $diferencia->days);
 
         // 1. Verificar disponibilidad por cada tipo de habitación pedida
         foreach ($cantidades as $id_tipo => $cantidad) {

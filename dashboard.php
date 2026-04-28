@@ -48,12 +48,15 @@ $username_actual = $user_data['usuario'] ?? '';
           <li class="nav-item">
             <a class="nav-link" id="nav-habitaciones" href="habitacion/index.php" target="content_frame" onclick="showIframe('nav-habitaciones')">🏨 Habitaciones</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" id="nav-reservas" href="reservas/index.php" target="content_frame" onclick="showIframe('nav-reservas')">📅 Reservas</a>
+          </li>
           <!-- Restricción visual de acuerdo al rol -->
           <?php if ($_SESSION['rol'] == 'SuperAdmin' || $_SESSION['rol'] == 'Administrador'): ?>
           <li class="nav-item">
             <a class="nav-link" id="nav-funcionarios" href="funcionario/index.php" target="content_frame" onclick="showIframe('nav-funcionarios')">👥 Funcionarios</a>
           </li>
-          <?php endif; ?>
+          <?php endif; ?> 
         </ul>
         <div class="dropdown">
           <a class="btn btn-outline-light dropdown-toggle fw-bold" href="#" role="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
@@ -104,6 +107,18 @@ $username_actual = $user_data['usuario'] ?? '';
             <h5 class="card-title fw-bold">Gestión de Habitaciones</h5>
             <p class="card-text text-muted">Ver estado, disponibilidad en tiempo real y mapa de pisos.</p>
             <a href="habitacion/index.php" target="content_frame" onclick="showIframe('nav-habitaciones')" class="btn btn-outline-primary mt-2 w-100 fw-bold">Ir a Habitaciones</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjeta Reservas -->
+      <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100 rounded-3">
+          <div class="card-body text-center p-4">
+            <div class="mb-3"><span class="badge bg-success rounded-circle p-3 fs-3">📅</span></div>
+            <h5 class="card-title fw-bold">Gestión de Reservas</h5>
+            <p class="card-text text-muted">Aprobar solicitudes web, realizar Check-in y registrar pagos.</p>
+            <a href="reservas/index.php" target="content_frame" onclick="showIframe('nav-reservas')" class="btn btn-outline-success mt-2 w-100 fw-bold">Ir a Reservas</a>
           </div>
         </div>
       </div>
@@ -187,22 +202,6 @@ $username_actual = $user_data['usuario'] ?? '';
   </div>
 
   <!-- Script para alternar vistas sin recargar la página -->
-  <script>
-    function showIframe(activeId) {
-      document.getElementById('dashboard-home').style.display = 'none';
-      document.getElementById('iframe-container').style.display = 'block';
-      
-      document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-      if (activeId) document.getElementById(activeId).classList.add('active');
-    }
-
-    function showDashboardHome() {
-      document.getElementById('iframe-container').style.display = 'none';
-      document.getElementById('dashboard-home').style.display = 'block';
-      
-      document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-      document.getElementById('nav-dashboard').classList.add('active');
-    }
-  </script>
+  <script src="assets/js/habitapp.js"></script>
 </body>
 </html>
