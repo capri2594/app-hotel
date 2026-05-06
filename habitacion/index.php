@@ -32,10 +32,24 @@ while($p = $res_pisos->fetch_assoc()) {
     $pisos[] = $p['piso'];
 }
 
-// Consulta para obtener TODAS las habitaciones ordenadas por piso y número
-$sql = "SELECT h.id_habitacion, h.numero, h.piso, t.codigo, t.nombre, h.estado
+// Obtener métricas globales para la leyenda
+$sql_stats = "SELECT estado, COUNT(*) as total FROM habitacion GROUP BY estado";
+$res_stats = $conexion->query($sql_stats);
+$stats = ['DISPONIBLE' => 0, 'OCUPADA' => 0, 'RESERVADA' => 0, 'MANTENIMIENTO' => 0];
+if ($res_stats) {
+    while($row = $res_stats->fetch_assoc()) {
+        $stats[$row['estado']] = $row['total'];
+    }
+}
+
+// Consulta para obtener TODAS las habitaciones + Nombre del huésped
+$sql = "SELECT h.id_habitacion, h.numero, h.piso, t.codigo, t.nombre, h.estado,
+               MAX(r.nombre) as huesped
         FROM habitacion h 
         INNER JOIN tipo_habitacion t ON h.id_tipo = t.id_tipo 
+        LEFT JOIN detalle_reserva dr ON dr.habitacion_id = h.id_habitacion
+        LEFT JOIN reservas r ON dr.reserva_id = r.id AND r.estado IN ('HOSPEDADO', 'CONFIRMADA')
+        GROUP BY h.id_habitacion
         ORDER BY h.piso ASC, h.numero ASC";
 $resultado = $conexion->query($sql);
 
@@ -95,10 +109,10 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
             <table class="table table-bordered text-center align-middle bg-white shadow-sm" style="table-layout: fixed; width: 100%;">
               <thead class="table-light">
                 <tr>
-                  <th>Disponible</th>
-                  <th>Ocupado</th>
-                  <th>Reservado</th>
-                  <th>Mantenimiento</th>
+                  <th>Disponible <span class="badge bg-success ms-1"><?= $stats['DISPONIBLE'] ?></span></th>
+                  <th>Ocupado <span class="badge bg-danger ms-1"><?= $stats['OCUPADA'] ?></span></th>
+                  <th>Reservado <span class="badge bg-warning text-dark ms-1"><?= $stats['RESERVADA'] ?></span></th>
+                  <th>Mantenimiento <span class="badge bg-secondary ms-1"><?= $stats['MANTENIMIENTO'] ?></span></th>
                 </tr>
               </thead>
               <tbody>
@@ -155,9 +169,27 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                   }
                                 echo '<td style="position: relative; height: 120px; overflow: hidden; '.$bg_td.'">';
                                   echo $foquito;
-                                  if ($estado == 'DISPONIBLE') { echo '<form action="create.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; }
-                                  echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br>'.htmlspecialchars($hab['nombre']).'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
-                                  if ($estado == 'DISPONIBLE') { echo '</button></form>'; }
+                                  
+                                  // Botón "Poner en Mantenimiento" (Engranaje)
+                                  if ($estado == 'DISPONIBLE') { echo '<form action="toggle_mantenimiento.php" method="POST" style="position: absolute; top: 5px; left: 5px; z-index: 20; margin: 0;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="mantenimiento"><button type="submit" class="btn btn-sm text-secondary border-0 p-1" title="Poner en Mantenimiento" onclick="return confirm(\'¿Poner la habitación '.$hab['numero'].' en mantenimiento?\');"><i class="lni lni-cog"></i></button></form>'; }
+
+                                  // Botón Principal de la celda (Reservar o Habilitar)
+                                  if ($estado == 'DISPONIBLE') {
+                                      echo '<form action="create.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; 
+                                  } elseif ($estado == 'MANTENIMIENTO') { 
+                                      echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
+                                  } elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
+                                      echo '<a href="../reservas/index.php" style="display:block; width:100%; height:100%; color:inherit; text-decoration:none;">';
+                                  }
+                                  
+                                  $badge_huesped = '';
+                                  if ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
+                                      $nombre_mostrar = !empty($hab['huesped']) ? htmlspecialchars($hab['huesped']) : 'Sin registro';
+                                      $badge_huesped = '<div class="mt-1"><span class="badge bg-dark text-wrap shadow-sm" style="font-size:0.65rem; line-height:1.1;">'.$nombre_mostrar.'</span></div>';
+                                  }
+                                  echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br><span style="font-size:0.75rem;">'.htmlspecialchars($hab['nombre']).'</span>'.$badge_huesped.'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
+                                  if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '</button></form>'; }
+                                  elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') { echo '</a>'; }
                                   echo '</td>';
                                 } else {
                                 echo '<td style="position: relative; height: 120px; overflow: hidden;">' . $n . '</td>';
@@ -190,9 +222,27 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                   }
                                 echo '<td style="position: relative; height: 120px; overflow: hidden; '.$bg_td.'">';
                                   echo $foquito;
-                                  if ($estado == 'DISPONIBLE') { echo '<form action="create.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; }
-                                  echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br>'.htmlspecialchars($hab['nombre']).'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
-                                  if ($estado == 'DISPONIBLE') { echo '</button></form>'; }
+                                  
+                                  // Botón "Poner en Mantenimiento" (Engranaje)
+                                  if ($estado == 'DISPONIBLE') { echo '<form action="toggle_mantenimiento.php" method="POST" style="position: absolute; top: 5px; left: 5px; z-index: 20; margin: 0;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="mantenimiento"><button type="submit" class="btn btn-sm text-secondary border-0 p-1" title="Poner en Mantenimiento" onclick="return confirm(\'¿Poner la habitación '.$hab['numero'].' en mantenimiento?\');"><i class="lni lni-cog"></i></button></form>'; }
+
+                                  // Botón Principal de la celda (Reservar o Habilitar)
+                                  if ($estado == 'DISPONIBLE') {
+                                      echo '<form action="create.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; 
+                                  } elseif ($estado == 'MANTENIMIENTO') { 
+                                      echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
+                                  } elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
+                                      echo '<a href="../reservas/index.php" style="display:block; width:100%; height:100%; color:inherit; text-decoration:none;">';
+                                  }
+                                  
+                                  $badge_huesped = '';
+                                  if ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
+                                      $nombre_mostrar = !empty($hab['huesped']) ? htmlspecialchars($hab['huesped']) : 'Sin registro';
+                                      $badge_huesped = '<div class="mt-1"><span class="badge bg-dark text-wrap shadow-sm" style="font-size:0.65rem; line-height:1.1;">'.$nombre_mostrar.'</span></div>';
+                                  }
+                                  echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br><span style="font-size:0.75rem;">'.htmlspecialchars($hab['nombre']).'</span>'.$badge_huesped.'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
+                                  if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '</button></form>'; }
+                                  elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') { echo '</a>'; }
                                   echo '</td>';
                                 } else {
                                 echo '<td style="position: relative; height: 120px; overflow: hidden;">' . $n . '</td>';
@@ -216,6 +266,7 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                     case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; break;
                                     default:               $gif = 'default.gif'; break;
                                   }
+                                  
                                   echo '<td style="position: relative; height: 120px; overflow: hidden; '.$bg_td.'">';
                                   echo $foquito;
                                   
@@ -227,9 +278,18 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                       echo '<form action="create.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; 
                                   } elseif ($estado == 'MANTENIMIENTO') { 
                                       echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
+                                  } elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
+                                      echo '<a href="../reservas/index.php" style="display:block; width:100%; height:100%; color:inherit; text-decoration:none;">';
                                   }
-                                  echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br>'.htmlspecialchars($hab['nombre']).'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
+                                  
+                                  $badge_huesped = '';
+                                  if ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
+                                      $nombre_mostrar = !empty($hab['huesped']) ? htmlspecialchars($hab['huesped']) : 'Sin registro';
+                                      $badge_huesped = '<div class="mt-1"><span class="badge bg-dark text-wrap shadow-sm" style="font-size:0.65rem; line-height:1.1;">'.$nombre_mostrar.'</span></div>';
+                                  }
+                                  echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br><span style="font-size:0.75rem;">'.htmlspecialchars($hab['nombre']).'</span>'.$badge_huesped.'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
                                   if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '</button></form>'; }
+                                  elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') { echo '</a>'; }
                                   echo '</td>';
                                 } else {
                                   echo '<td style="position: relative; height: 120px; overflow: hidden;">' . $n . '</td>';
@@ -246,6 +306,8 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
 </div>
 
     <script src="../assets/js/bootstrap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="../assets/js/habitapp.js"></script>
 </body>
 
 </html>

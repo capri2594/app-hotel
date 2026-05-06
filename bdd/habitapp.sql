@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 07-04-2026 a las 00:44:59
+-- Tiempo de generación: 06-05-2026 a las 17:14:22
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -20,6 +20,26 @@ SET time_zone = "+00:00";
 --
 -- Base de datos: `habitapp`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `detalle_reserva`
+--
+
+CREATE TABLE `detalle_reserva` (
+  `id` int(11) NOT NULL,
+  `reserva_id` int(11) NOT NULL,
+  `habitacion_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `detalle_reserva`
+--
+
+INSERT INTO `detalle_reserva` (`id`, `reserva_id`, `habitacion_id`) VALUES
+(1, 1, 6),
+(2, 2, 12);
 
 -- --------------------------------------------------------
 
@@ -45,10 +65,10 @@ CREATE TABLE `funcionario` (
 -- Volcado de datos para la tabla `funcionario`
 --
 
-INSERT INTO `funcionario` (`id`, `nombre`, `paterno`, `materno`, `ci`, `telefono`, `rol_id`, `estado`) VALUES
-(1, 'Super', 'Admin', '', '0000000', '00000000', 1, 'ACTIVO'),
-(2, 'Carlos', 'Mendoza', '', '1234567', '77712345', 2, 'ACTIVO'),
-(3, 'Ana', 'Gomez', '', '7654321', '77754321', 3, 'ACTIVO');
+INSERT INTO `funcionario` (`id`, `nombre`, `paterno`, `materno`, `ci`, `telefono`, `rol_id`, `estado`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 'Super', 'Admin', '', '0000000', '00000000', 1, 'ACTIVO', '2026-04-28 22:39:01', '2026-04-28 22:39:01', NULL),
+(2, 'Carlos', 'Mendoza', '', '1234567', '77712345', 2, 'ACTIVO', '2026-04-28 22:39:01', '2026-04-28 22:39:01', NULL),
+(3, 'Ana', 'Gomez', '', '7654321', '77754321', 3, 'ACTIVO', '2026-04-28 22:39:01', '2026-04-28 22:39:01', NULL);
 
 -- --------------------------------------------------------
 
@@ -70,17 +90,17 @@ CREATE TABLE `habitacion` (
 
 INSERT INTO `habitacion` (`id_habitacion`, `numero`, `id_tipo`, `piso`, `estado`) VALUES
 (1, 401, 1, 4, 'DISPONIBLE'),
-(2, 402, 2, 4, 'OCUPADA'),
-(3, 403, 3, 4, 'RESERVADA'),
+(2, 402, 2, 4, 'DISPONIBLE'),
+(3, 403, 3, 4, 'DISPONIBLE'),
 (4, 404, 1, 4, 'MANTENIMIENTO'),
 (5, 405, 2, 4, 'DISPONIBLE'),
-(6, 406, 1, 4, 'DISPONIBLE'),
-(7, 407, 3, 4, 'OCUPADA'),
+(6, 406, 4, 4, 'OCUPADA'),
+(7, 407, 3, 4, 'DISPONIBLE'),
 (8, 408, 1, 4, 'DISPONIBLE'),
 (9, 409, 2, 4, 'DISPONIBLE'),
 (10, 410, 1, 4, 'DISPONIBLE'),
 (11, 411, 3, 4, 'DISPONIBLE'),
-(12, 412, 1, 4, 'DISPONIBLE'),
+(12, 412, 5, 4, 'DISPONIBLE'),
 (13, 413, 2, 4, 'DISPONIBLE'),
 (14, 414, 1, 4, 'DISPONIBLE'),
 (15, 415, 3, 4, 'DISPONIBLE'),
@@ -92,13 +112,13 @@ INSERT INTO `habitacion` (`id_habitacion`, `numero`, `id_tipo`, `piso`, `estado`
 (21, 503, 3, 5, 'DISPONIBLE'),
 (22, 504, 1, 5, 'DISPONIBLE'),
 (23, 505, 2, 5, 'DISPONIBLE'),
-(24, 506, 1, 5, 'DISPONIBLE'),
+(24, 506, 4, 5, 'DISPONIBLE'),
 (25, 507, 3, 5, 'DISPONIBLE'),
 (26, 508, 1, 5, 'DISPONIBLE'),
 (27, 509, 2, 5, 'DISPONIBLE'),
 (28, 510, 1, 5, 'DISPONIBLE'),
 (29, 511, 3, 5, 'DISPONIBLE'),
-(30, 512, 1, 5, 'DISPONIBLE'),
+(30, 512, 5, 5, 'DISPONIBLE'),
 (31, 513, 2, 5, 'DISPONIBLE'),
 (32, 514, 1, 5, 'DISPONIBLE'),
 (33, 515, 3, 5, 'DISPONIBLE'),
@@ -110,13 +130,13 @@ INSERT INTO `habitacion` (`id_habitacion`, `numero`, `id_tipo`, `piso`, `estado`
 (39, 603, 3, 6, 'DISPONIBLE'),
 (40, 604, 1, 6, 'DISPONIBLE'),
 (41, 605, 2, 6, 'DISPONIBLE'),
-(42, 606, 1, 6, 'DISPONIBLE'),
+(42, 606, 4, 6, 'DISPONIBLE'),
 (43, 607, 3, 6, 'DISPONIBLE'),
 (44, 608, 1, 6, 'DISPONIBLE'),
 (45, 609, 2, 6, 'DISPONIBLE'),
 (46, 610, 1, 6, 'DISPONIBLE'),
 (47, 611, 3, 6, 'DISPONIBLE'),
-(48, 612, 1, 6, 'DISPONIBLE'),
+(48, 612, 5, 6, 'DISPONIBLE'),
 (49, 613, 2, 6, 'DISPONIBLE'),
 (50, 614, 1, 6, 'DISPONIBLE'),
 (51, 615, 3, 6, 'DISPONIBLE'),
@@ -173,9 +193,15 @@ CREATE TABLE `pagos` (
   `monto` decimal(10,2) NOT NULL,
   `monto_recibido` decimal(10,2) DEFAULT NULL,
   `cambio` decimal(10,2) DEFAULT NULL,
-  `detalle` varchar(255) DEFAULT NULL,
   `fecha` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `pagos`
+--
+
+INSERT INTO `pagos` (`id`, `reserva_id`, `tipo_pago`, `monto`, `monto_recibido`, `cambio`, `fecha`) VALUES
+(3, 1, 'EFECTIVO', 580.00, 600.00, 20.00, '2026-05-06 14:21:39');
 
 -- --------------------------------------------------------
 
@@ -198,16 +224,13 @@ CREATE TABLE `reservas` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- --------------------------------------------------------
+--
+-- Volcado de datos para la tabla `reservas`
+--
 
---
--- Estructura de tabla para la tabla `detalle_reserva`
---
-CREATE TABLE `detalle_reserva` (
-  `id` int(11) NOT NULL,
-  `reserva_id` int(11) NOT NULL,
-  `habitacion_id` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+INSERT INTO `reservas` (`id`, `nombre`, `ci`, `telefono`, `fecha_ingreso`, `fecha_salida`, `estado`, `desayuno`, `garage`, `total`, `foto_ci`, `created_at`) VALUES
+(1, 'Carla Marzana', '16227649', '+591 69604048', '2026-05-06', '2026-05-07', 'HOSPEDADO', 1, 2, 580.00, 'uploads/ci/ci_reserva_1_1778077299.png', '2026-05-06 12:58:24'),
+(2, 'Reynaldo Flores', '7403044', '+591 60408150', '2026-05-06', '2026-05-07', 'PENDIENTE', 1, 2, 840.00, NULL, '2026-05-06 13:03:14');
 
 -- --------------------------------------------------------
 
@@ -275,14 +298,22 @@ CREATE TABLE `usuario` (
 -- Volcado de datos para la tabla `usuario`
 --
 
-INSERT INTO `usuario` (`id`, `funcionario_id`, `usuario`, `password`) VALUES
-(1, 1, 'admin', '21232f297a57a5a743894a0e4a801fc3'),
-(2, 2, 'cmendoza', 'e10adc3949ba59abbe56e057f20f883e'),
-(3, 3, 'anag', 'e10adc3949ba59abbe56e057f20f883e');
+INSERT INTO `usuario` (`id`, `funcionario_id`, `usuario`, `password`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 1, 'admin', '21232f297a57a5a743894a0e4a801fc3', '2026-04-28 22:39:03', '2026-04-28 22:39:03', NULL),
+(2, 2, 'cmendoza', 'e10adc3949ba59abbe56e057f20f883e', '2026-04-28 22:39:03', '2026-04-28 22:39:03', NULL),
+(3, 3, 'anag', 'e10adc3949ba59abbe56e057f20f883e', '2026-04-28 22:39:03', '2026-04-28 22:39:03', NULL);
 
 --
 -- Índices para tablas volcadas
 --
+
+--
+-- Indices de la tabla `detalle_reserva`
+--
+ALTER TABLE `detalle_reserva`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `reserva_id` (`reserva_id`),
+  ADD KEY `habitacion_id` (`habitacion_id`);
 
 --
 -- Indices de la tabla `funcionario`
@@ -314,14 +345,6 @@ ALTER TABLE `reservas`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indices de la tabla `detalle_reserva`
---
-ALTER TABLE `detalle_reserva`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `reserva_id` (`reserva_id`),
-  ADD KEY `habitacion_id` (`habitacion_id`);
-
---
 -- Indices de la tabla `rol`
 --
 ALTER TABLE `rol`
@@ -347,6 +370,12 @@ ALTER TABLE `usuario`
 --
 
 --
+-- AUTO_INCREMENT de la tabla `detalle_reserva`
+--
+ALTER TABLE `detalle_reserva`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT de la tabla `funcionario`
 --
 ALTER TABLE `funcionario`
@@ -362,19 +391,13 @@ ALTER TABLE `habitacion`
 -- AUTO_INCREMENT de la tabla `pagos`
 --
 ALTER TABLE `pagos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `reservas`
 --
 ALTER TABLE `reservas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT de la tabla `detalle_reserva`
---
-ALTER TABLE `detalle_reserva`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `rol`
@@ -386,7 +409,7 @@ ALTER TABLE `rol`
 -- AUTO_INCREMENT de la tabla `tipo_habitacion`
 --
 ALTER TABLE `tipo_habitacion`
-  MODIFY `id_tipo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id_tipo` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `usuario`
@@ -397,6 +420,13 @@ ALTER TABLE `usuario`
 --
 -- Restricciones para tablas volcadas
 --
+
+--
+-- Filtros para la tabla `detalle_reserva`
+--
+ALTER TABLE `detalle_reserva`
+  ADD CONSTRAINT `detalle_reserva_ibfk_1` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `detalle_reserva_ibfk_2` FOREIGN KEY (`habitacion_id`) REFERENCES `habitacion` (`id_habitacion`);
 
 --
 -- Filtros para la tabla `funcionario`
@@ -415,13 +445,6 @@ ALTER TABLE `habitacion`
 --
 ALTER TABLE `pagos`
   ADD CONSTRAINT `pagos_ibfk_1` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`id`);
-
---
--- Filtros para la tabla `detalle_reserva`
---
-ALTER TABLE `detalle_reserva`
-  ADD CONSTRAINT `detalle_reserva_ibfk_1` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `detalle_reserva_ibfk_2` FOREIGN KEY (`habitacion_id`) REFERENCES `habitacion` (`id_habitacion`);
 
 --
 -- Filtros para la tabla `usuario`

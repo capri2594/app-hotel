@@ -216,4 +216,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }, 1000);
     }
+
+    // 6. Inicializar Tooltips de Bootstrap (Para el mapa de habitaciones)
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
+    }
 });
