@@ -77,18 +77,20 @@ $username_actual = $user_data['usuario'] ?? '';
 
   <!-- Vista de Tarjetas (Inicio) -->
   <div id="dashboard-home" class="container mt-5 flex-grow-1 overflow-auto">
-    <!-- Alertas de éxito o error del perfil -->
-    <?php if (isset($_GET['msg'])): ?>
+    <!-- Alertas Flash de éxito o error -->
+    <?php if (isset($_SESSION['msg'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <?= htmlspecialchars($_GET['msg']) ?>
+            <?= htmlspecialchars($_SESSION['msg']) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
+        <?php unset($_SESSION['msg']); ?>
     <?php endif; ?>
-    <?php if (isset($_GET['error'])): ?>
+    <?php if (isset($_SESSION['error'])): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <?= htmlspecialchars($_GET['error']) ?>
+            <?= htmlspecialchars($_SESSION['error']) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
+        <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
     <div class="row mb-4">

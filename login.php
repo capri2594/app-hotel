@@ -7,7 +7,8 @@ $usuario = $_POST['usuario'] ?? '';
 $password = $_POST['password'] ?? '';
 
 if (empty($usuario) || empty($password)) {
-    echo "⚠️ Todos los campos son requeridos.";
+    $_SESSION['error'] = "Todos los campos son requeridos.";
+    header("Location: index.php");
     exit;
 }
 
@@ -34,13 +35,13 @@ if ($resultado->num_rows === 1) {
     $_SESSION['nombre_completo'] = $datos_usuario['nombre'] . ' ' . $datos_usuario['paterno'];
 
     // Redireccionar
+    $_SESSION['msg'] = "¡Bienvenido, " . $_SESSION['nombre_completo'] . "! Inicio de sesión exitoso.";
     header("Location: dashboard.php");
     exit;
 } else {
     // Datos incorrectos
-    echo "<script>
-        alert('❌ Usuario o contraseña incorrecto, o cuenta inactiva');
-        window.location.href = 'index.php'; // Vuelve al formulario
-    </script>";
+    $_SESSION['error'] = "Usuario o contraseña incorrecto, o cuenta inactiva.";
+    header("Location: index.php");
+    exit;
 }
 ?>

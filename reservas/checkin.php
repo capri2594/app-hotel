@@ -13,6 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $total_pagar = floatval($_POST['total_pagar'] ?? 0);
     $tipo_pago = $_POST['tipo_pago'] ?? 'EFECTIVO';
     $monto_recibido = floatval($_POST['monto_recibido'] ?? 0);
+    $desayuno = isset($_POST['desayuno']) ? 1 : 0;
+    $garage = intval($_POST['garage'] ?? 0);
     
     // Calcular el cambio en backend para mayor seguridad
     $cambio = $monto_recibido - $total_pagar;
@@ -50,8 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
             // A. Actualizar estado de reserva y foto
-            $stmt_reserva = $conexion->prepare("UPDATE reservas SET estado = 'EN_CURSO', foto_ci = ? WHERE id = ?");
-            $stmt_reserva->bind_param("si", $foto_ruta, $id_reserva);
+            $stmt_reserva = $conexion->prepare("UPDATE reservas SET estado = 'HOSPEDADO', foto_ci = ?, desayuno = ?, garage = ?, total = ? WHERE id = ?");
+            $stmt_reserva->bind_param("siidi", $foto_ruta, $desayuno, $garage, $total_pagar, $id_reserva);
             $stmt_reserva->execute();
 
             // B. Registrar el Pago Completo

@@ -49,7 +49,7 @@ $res_tipos = $conexion->query($sql_tipos);
                 </div>
                 <div class="card-body p-4 p-md-5 bg-white">
                     
-                    <form action="store_reserva.php" method="POST">
+                    <form action="../reservas/store.php" method="POST">
                         
                         <h5 class="fw-bold fs-6 mb-3 text-dark text-uppercase border-bottom pb-2">1. Tus Datos Personales</h5>
                         <div class="mb-3">
@@ -76,7 +76,7 @@ $res_tipos = $conexion->query($sql_tipos);
                             </div>
                         </div>
                         
-                        <h5 class="fw-bold fs-6 mb-3 text-dark text-uppercase border-bottom pb-2 mt-5">2. Habitaciones a Reservar</h5>
+                        <h5 class="fw-bold fs-6 mb-3 text-dark text-uppercase border-bottom pb-2 mt-4">2. Habitaciones a Reservar</h5>
                         <div class="mb-4">
                             <label class="form-label fw-bold text-secondary mb-3">Indica la cantidad que necesitas de cada tipo:</label>
                             <?php while($tipo = $res_tipos->fetch_assoc()): ?>
@@ -98,6 +98,20 @@ $res_tipos = $conexion->query($sql_tipos);
                             <div class="col-md-6 mt-3 mt-md-0">
                                 <label class="form-label fw-bold text-secondary">Fecha de Salida <small>(Check-out)</small></label>
                                 <input type="date" class="form-control form-control-lg bg-light" name="fecha_salida" min="<?= date('Y-m-d', strtotime('+1 day')) ?>" required>
+                            </div>
+                        </div>
+
+                        <h5 class="fw-bold fs-6 mb-3 text-dark text-uppercase border-bottom pb-2 mt-4">3. Servicios Adicionales</h5>
+                        <div class="row mb-5 bg-light p-3 rounded border border-light shadow-sm mx-0">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <div class="form-check form-switch" style="transform: scale(1.1); transform-origin: left center;">
+                                    <input class="form-check-input" type="checkbox" id="desayuno" name="desayuno" value="1">
+                                    <label class="form-check-label fw-bold text-dark ms-2" for="desayuno">☕ Incluir Desayuno <span class="text-success">(+Bs. 30 / pers / noche)</span></label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                                <label class="form-label fw-bold text-dark mb-0 me-3" for="garage">🚗 Garages <span class="text-success">(+Bs. 20/noche c/u)</span></label>
+                                <input type="number" class="form-control text-center border-secondary" id="garage" name="garage" value="0" min="0" max="10" style="width: 80px;">
                             </div>
                         </div>
 

@@ -20,10 +20,15 @@ function showDashboardHome() {
 /* =========================================
    Funciones de Recepción (Check-in)
 ========================================= */
-function calcularCambio(id, totalCobrar) {
-    let recibido = parseFloat(document.getElementById('recibido_' + id).value) || 0;
-    let cambio = recibido - totalCobrar;
+function calcularCambio(id) {
+    let totalCobrar = parseFloat(document.getElementById('total_pagar_' + id).value) || 0;
+    let inputRecibido = document.getElementById('recibido_' + id);
     let inputCambio = document.getElementById('cambio_' + id);
+    
+    if (!inputCambio || !inputRecibido) return; // Salir si no estamos en la vista de Check-in
+    
+    let recibido = parseFloat(inputRecibido.value) || 0;
+    let cambio = recibido - totalCobrar;
     
     if (cambio >= 0) {
         inputCambio.value = cambio.toFixed(2);
@@ -32,6 +37,44 @@ function calcularCambio(id, totalCobrar) {
         inputCambio.value = '0.00';
         inputCambio.classList.replace('text-success', 'text-danger');
     }
+}
+
+function toggleServicio(id, precioServicio, noches, checkbox) {
+    let totalInput = document.getElementById('total_pagar_' + id);
+    let displayTotal = document.getElementById('display_total_' + id);
+    let inputRecibido = document.getElementById('recibido_' + id);
+    
+    let total = parseFloat(totalInput.value) || 0;
+    let diferencia = precioServicio * noches;
+    
+    if (checkbox.checked) { total += diferencia; } else { total -= diferencia; }
+    
+    totalInput.value = total.toFixed(2);
+    displayTotal.innerHTML = 'Bs. ' + total.toFixed(2);
+    
+    // Actualizar el minimo aceptado en efectivo
+    if(inputRecibido) inputRecibido.min = total.toFixed(2);
+    
+    calcularCambio(id);
+}
+
+function actualizarCantidadServicio(id, precioServicio, noches, input) {
+    let totalInput = document.getElementById('total_pagar_' + id);
+    let displayTotal = document.getElementById('display_total_' + id);
+    let inputRecibido = document.getElementById('recibido_' + id);
+    
+    let total = parseFloat(totalInput.value) || 0;
+    let oldValue = parseInt(input.getAttribute('data-old-value')) || 0;
+    let newValue = parseInt(input.value) || 0;
+    
+    let diferencia = (newValue - oldValue) * precioServicio * noches;
+    total += diferencia;
+    input.setAttribute('data-old-value', newValue);
+    
+    totalInput.value = total.toFixed(2);
+    displayTotal.innerHTML = 'Bs. ' + total.toFixed(2);
+    if(inputRecibido) inputRecibido.min = total.toFixed(2);
+    calcularCambio(id);
 }
 
 /* =========================================
@@ -51,10 +94,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         // Configuracion para Tabla Reservas
         if ($('#tablaReservas').length > 0) {
-            $('#tablaReservas').DataTable({
+            var tablaReservas = $('#tablaReservas').DataTable({
                 "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
                 "order": [[ 0, "desc" ]], // Ordenar por ID descendente
-                "columnDefs": [{ "orderable": false, "targets": 7 }]
+                "columnDefs": [{ "orderable": false, "targets": 7 }],
+                "deferRender": true // Optimización extrema para manejar miles de filas sin lentitud
+            });
+
+            // Funcionalidad de Pestañas Interactivas (Sin recargar la página)
+            $('.tab-filtro').on('click', function(e) {
+                e.preventDefault();
+                
+                // Cambiar estilos visuales
+                $('.tab-filtro').removeClass('active shadow-sm fw-bold').addClass('bg-white border text-dark');
+                $(this).removeClass('bg-white border text-dark').addClass('active shadow-sm fw-bold');
+
+                // Aplicar Filtro en la Columna 6 ("Estado") usando Regex para coincidencias exactas
+                var estado = $(this).data('estado');
+                if (estado === '') {
+                    tablaReservas.column(6).search('').draw();
+                } else {
+                    tablaReservas.column(6).search('^' + estado + '$', true, false).draw();
+                }
             });
         }
     }
@@ -130,9 +191,29 @@ document.addEventListener('DOMContentLoaded', function() {
         $('.select2-country').val('+591').trigger('change');
     }
 
-    // 5. Auto-abrir enlace de WhatsApp si existe en la vista
-    const btnAutoWA = document.getElementById('btnAutoWA');
-    if (btnAutoWA) {
-        window.open(btnAutoWA.href, '_blank');
+    // 5. Temporizador (Countdown) para Reservas Pendientes (12 horas)
+    if (document.getElementById('tablaReservas')) {
+        setInterval(function() {
+            const now = Math.floor(Date.now() / 1000);
+            document.querySelectorAll('.countdown-timer').forEach(function(el) {
+                const expire = parseInt(el.getAttribute('data-expire'));
+                let diff = expire - now;
+                
+                if (diff <= 0) {
+                    el.innerHTML = '<i class="lni lni-timer"></i> Expirado';
+                    el.classList.replace('text-danger', 'text-muted');
+                } else {
+                    let h = Math.floor(diff / 3600);
+                    let m = Math.floor((diff % 3600) / 60);
+                    let s = diff % 60;
+                    h = String(h).padStart(2, '0');
+                    m = String(m).padStart(2, '0');
+                    s = String(s).padStart(2, '0');
+                    
+                    let span = el.querySelector('span');
+                    if (span) span.innerText = h + ':' + m + ':' + s;
+                }
+            });
+        }, 1000);
     }
 });

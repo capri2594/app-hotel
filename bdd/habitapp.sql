@@ -173,6 +173,7 @@ CREATE TABLE `pagos` (
   `monto` decimal(10,2) NOT NULL,
   `monto_recibido` decimal(10,2) DEFAULT NULL,
   `cambio` decimal(10,2) DEFAULT NULL,
+  `detalle` varchar(255) DEFAULT NULL,
   `fecha` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -189,7 +190,9 @@ CREATE TABLE `reservas` (
   `telefono` varchar(20) DEFAULT NULL,
   `fecha_ingreso` date NOT NULL,
   `fecha_salida` date NOT NULL,
-  `estado` enum('PENDIENTE','CONFIRMADA','EN_CURSO','FINALIZADA','CANCELADA') DEFAULT 'PENDIENTE',
+  `estado` enum('PENDIENTE','CONFIRMADA','HOSPEDADO','FINALIZADA','CANCELADA') DEFAULT 'PENDIENTE',
+  `desayuno` tinyint(1) DEFAULT 0,
+  `garage` int(11) DEFAULT 0,
   `total` decimal(10,2) NOT NULL DEFAULT 0.00,
   `foto_ci` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
@@ -237,17 +240,20 @@ CREATE TABLE `tipo_habitacion` (
   `id_tipo` int(11) NOT NULL,
   `codigo` varchar(20) NOT NULL,
   `nombre` varchar(100) NOT NULL,
-  `precio` decimal(10,2) NOT NULL DEFAULT 0.00
+  `precio` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `capacidad` int(11) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipo_habitacion`
 --
 
-INSERT INTO `tipo_habitacion` (`id_tipo`, `codigo`, `nombre`, `precio`) VALUES
-(1, 'SGL', 'Habitación Simple', 150.00),
-(2, 'DBL', 'Habitación Doble', 250.00),
-(3, 'MAT', 'Habitación Matrimonial', 350.00);
+INSERT INTO `tipo_habitacion` (`id_tipo`, `codigo`, `nombre`, `precio`, `capacidad`) VALUES
+(1, 'SGL', 'Habitación Simple', 150.00, 1),
+(2, 'DBL', 'Habitación Doble', 250.00, 2),
+(3, 'MAT', 'Habitación Matrimonial', 350.00, 2),
+(4, 'TPL', 'Habitación Triple', 450.00, 3),
+(5, 'QUA', 'Habitación Quíntuple', 650.00, 5);
 
 -- --------------------------------------------------------
 

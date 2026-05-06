@@ -24,6 +24,16 @@ if (isset($_SESSION['usuario_id'])) {
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-6 col-lg-4">
+                
+                <!-- Alertas de Error Bootstrap (Flash Messages) -->
+                <?php if (isset($_SESSION['error'])): ?>
+                    <div class="alert alert-danger alert-dismissible fade show shadow-sm text-center" role="alert">
+                        <strong>⚠️ Error:</strong> <?= htmlspecialchars($_SESSION['error']) ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    <?php unset($_SESSION['error']); ?>
+                <?php endif; ?>
+
                 <div class="card shadow-lg border-0 rounded-3 text-white" style="background-color: rgba(0, 0, 0, 0.6);">
                     <div class="card-body p-5">
                         <div class="text-center mb-4">

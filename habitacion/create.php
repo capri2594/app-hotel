@@ -60,8 +60,9 @@ $habitacion = $resultado->fetch_assoc();
                     </div>
 
                     <!-- Formulario de Reserva -->
-                    <form action="store_reserva.php" method="POST">
+                    <form action="../reservas/store.php" method="POST">
                         <input type="hidden" name="habitacion_id" value="<?= $id_habitacion ?>">
+                        <input type="hidden" name="origen" value="mapa">
                         
                         <h5 class="fw-bold fs-6 mb-3 text-dark">📝 Datos del Cliente</h5>
                         <div class="mb-3">
@@ -90,6 +91,21 @@ $habitacion = $resultado->fetch_assoc();
                                 <label class="form-label fw-bold text-dark">Fecha de Salida (Check-out)</label>
                                 <!-- El campo fecha_salida debe ser al menos el día siguiente a hoy -->
                                 <input type="date" class="form-control bg-light" name="fecha_salida" min="<?= date('Y-m-d', strtotime('+1 day')) ?>" required>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+                        <h5 class="fw-bold fs-6 mb-3 text-dark"><i class="lni lni-star me-1 text-warning"></i> Servicios Adicionales</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="desayuno" name="desayuno" value="1">
+                                    <label class="form-check-label fw-bold text-dark" for="desayuno">☕ Desayuno (+Bs. 30/pers/noche)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                                <label class="form-label fw-bold text-dark mb-0 me-2" for="garage">🚗 Garages (+Bs. 20/noche c/u)</label>
+                                <input type="number" class="form-control text-center form-control-sm border-secondary" id="garage" name="garage" value="0" min="0" max="10" style="width: 70px;">
                             </div>
                         </div>
 
