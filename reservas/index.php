@@ -9,8 +9,13 @@ if (!isset($_SESSION['usuario_id'])) {
 
 include '../conexion.php';
 
+// PARCHE AUTOMÁTICO: Agregar columna confirmada_at si no existe
+$conexion->query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS confirmada_at TIMESTAMP NULL AFTER created_at");
+
 // LIMPIEZA AUTOMÁTICA: Cancelar reservas web pendientes con más de 12 horas
 $conexion->query("UPDATE reservas SET estado = 'CANCELADA' WHERE estado = 'PENDIENTE' AND created_at <= NOW() - INTERVAL 12 HOUR");
+// LIMPIEZA AUTOMÁTICA: Cancelar reservas confirmadas (Reservadas) que no hagan check-in en 12 horas
+$conexion->query("UPDATE reservas SET estado = 'CANCELADA' WHERE estado = 'CONFIRMADA' AND confirmada_at <= NOW() - INTERVAL 12 HOUR");
 
 // Obtener conteos para las pestañas
 $sql_counts = "SELECT estado, COUNT(*) as total FROM reservas GROUP BY estado";
@@ -81,17 +86,17 @@ $resultado = $conexion->query($sql);
                 </li>
                 <li class="nav-item">
                     <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="PENDIENTE">
-                        ⏳ Pendientes <span class="badge bg-warning text-dark ms-1 rounded-pill"><?= $counts['PENDIENTE'] ?></span>
+                        ⏳ Pendientes <span class="badge bg-primary text-white ms-1 rounded-pill"><?= $counts['PENDIENTE'] ?></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="CONFIRMADA">
-                        ✅ Confirmadas <span class="badge bg-primary text-white ms-1 rounded-pill"><?= $counts['CONFIRMADA'] ?></span>
+                        ✅ Reservadas <span class="badge bg-warning text-dark ms-1 rounded-pill"><?= $counts['CONFIRMADA'] ?></span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="HOSPEDADO">
-                        🛏️ Hospedados <span class="badge bg-info text-dark ms-1 rounded-pill"><?= $counts['HOSPEDADO'] ?></span>
+                        🛏️ Ocupadas <span class="badge bg-danger text-white ms-1 rounded-pill"><?= $counts['HOSPEDADO'] ?></span>
                     </a>
                 </li>
             </ul>
@@ -139,15 +144,16 @@ $resultado = $conexion->query($sql);
                     <td>
                       <?php 
                         $badge_class = 'bg-secondary';
-                        if($fila['estado'] == 'PENDIENTE') $badge_class = 'bg-warning text-dark';
-                        if($fila['estado'] == 'CONFIRMADA') $badge_class = 'bg-primary';
-                      if($fila['estado'] == 'HOSPEDADO') $badge_class = 'bg-info text-dark';
+                        $estado_mostrar = $fila['estado'];
+                        if($fila['estado'] == 'PENDIENTE') $badge_class = 'bg-primary';
+                        if($fila['estado'] == 'CONFIRMADA') { $badge_class = 'bg-warning text-dark'; $estado_mostrar = 'RESERVADA'; }
+                        if($fila['estado'] == 'HOSPEDADO') { $badge_class = 'bg-danger'; $estado_mostrar = 'OCUPADA'; }
                         if($fila['estado'] == 'FINALIZADA') $badge_class = 'bg-success';
-                        if($fila['estado'] == 'CANCELADA') $badge_class = 'bg-danger';
+                        if($fila['estado'] == 'CANCELADA') $badge_class = 'bg-dark';
                       ?>
-                      <span class="badge <?= $badge_class ?>"><?= $fila['estado'] ?></span>
-                      <?php if($fila['estado'] == 'PENDIENTE'): ?>
-                          <?php $expira = strtotime($fila['created_at']) + (12 * 3600); ?>
+                      <span class="badge <?= $badge_class ?>"><?= $estado_mostrar ?></span>
+                      <?php if($fila['estado'] == 'CONFIRMADA' && !empty($fila['confirmada_at'])): ?>
+                          <?php $expira = strtotime($fila['confirmada_at']) + (12 * 3600); ?>
                           <div class="text-danger fw-bold mt-1 countdown-timer" style="font-size: 0.75rem;" data-expire="<?= $expira ?>">
                               <i class="lni lni-timer"></i> <span>Calculando...</span>
                           </div>
@@ -179,7 +185,8 @@ $resultado = $conexion->query($sql);
                                         $servicios_wa = "\n✨ Servicios Extras: *" . implode(" y ", $servs) . "*";
                                     }
                                     
-                                    $mensaje_wa = "🏨 *HabitApp de EPDEOR - Confirmación de Pre-Reserva*\n\nHola *" . trim($fila['nombre']) . "*,\n\nTu solicitud de reserva ha sido *APROBADA* ✅.\n\n*Detalles de tu asignación:*\n🛏️ Habitación(es): *" . ($fila['numeros_habitaciones'] ?? 'N/A') . "* (" . ($fila['tipos_habitaciones'] ?? 'N/A') . ")" . $servicios_wa . "\n💰 Total a Pagar: *Bs. " . number_format((float)($fila['total'] ?? 0), 2) . "*\n\nTe recordamos que esta es una Pre-Reserva válida por 12 horas. El pago y registro final se realizarán en Recepción al momento de tu llegada. Por favor, indícanos tu número de *CI/Pasaporte* o *Celular* en mostrador para ubicar tu reserva rápidamente.\n\n¡Te esperamos!";
+                                    $hora_limite = !empty($fila['confirmada_at']) ? date('d/m/Y \a \l\a\s H:i', strtotime($fila['confirmada_at']) + (12 * 3600)) : date('d/m/Y \a \l\a\s H:i', strtotime($fila['created_at']) + (12 * 3600));
+                                    $mensaje_wa = "🏨 *HabitApp de EPDEOR - Confirmación de Pre-Reserva*\n\nHola *" . trim($fila['nombre']) . "*,\n\nTu solicitud de reserva ha sido *APROBADA* ✅.\n\n*Detalles de tu asignación:*\n🛏️ Habitación(es): *" . ($fila['numeros_habitaciones'] ?? 'N/A') . "* (" . ($fila['tipos_habitaciones'] ?? 'N/A') . ")" . $servicios_wa . "\n💰 Total a Pagar: *Bs. " . number_format((float)($fila['total'] ?? 0), 2) . "*\n\nLe recomendamos apersonarse antes del *" . $hora_limite . "*, por lo que de no hacerlo hasta ese tiempo su reserva va a expirar. El pago y registro final se realizarán en Recepción al momento de tu llegada. Por favor, indícanos tu número de *CI/Pasaporte* o *Celular* en mostrador para ubicar tu reserva rápidamente.\n\n¡Te esperamos!";
                                     $wa_url = "https://api.whatsapp.com/send?phone=" . $tel_limpio . "&text=" . rawurlencode($mensaje_wa);
                                   ?>
                                   <a href="<?= $wa_url ?>" target="_blank" class="btn btn-sm btn-success fw-bold shadow-sm" title="Reenviar Confirmación por WhatsApp"><i class="lni lni-whatsapp"></i></a>
@@ -227,7 +234,8 @@ $resultado = $conexion->query($sql);
                             $servicios_wa = "\n✨ Servicios Extras: *" . implode(" y ", $servs) . "*";
                         }
                         
-                        $mensaje_wa = "🏨 *HabitApp de EPDEOR - Confirmación de Pre-Reserva*\n\nHola *" . trim($fila['nombre']) . "*,\n\nTu solicitud de reserva ha sido *APROBADA* ✅.\n\n*Detalles de tu asignación:*\n🛏️ Habitación(es): *" . ($fila['numeros_habitaciones'] ?? 'N/A') . "* (" . ($fila['tipos_habitaciones'] ?? 'N/A') . ")" . $servicios_wa . "\n💰 Total a Pagar: *Bs. " . number_format((float)($fila['total'] ?? 0), 2) . "*\n\nTe recordamos que esta es una Pre-Reserva válida por 12 horas. El pago y registro final se realizarán en Recepción al momento de tu llegada. Por favor, indícanos tu número de *CI/Pasaporte* o *Celular* en mostrador para ubicar tu reserva rápidamente.\n\n¡Te esperamos!";
+                        $hora_limite = date('d/m/Y \a \l\a\s H:i', time() + (12 * 3600));
+                        $mensaje_wa = "🏨 *HabitApp de EPDEOR - Confirmación de Pre-Reserva*\n\nHola *" . trim($fila['nombre']) . "*,\n\nTu solicitud de reserva ha sido *APROBADA* ✅.\n\n*Detalles de tu asignación:*\n🛏️ Habitación(es): *" . ($fila['numeros_habitaciones'] ?? 'N/A') . "* (" . ($fila['tipos_habitaciones'] ?? 'N/A') . ")" . $servicios_wa . "\n💰 Total a Pagar: *Bs. " . number_format((float)($fila['total'] ?? 0), 2) . "*\n\nLe recomendamos apersonarse antes del *" . $hora_limite . "*, por lo que de no hacerlo hasta ese tiempo su reserva va a expirar. El pago y registro final se realizarán en Recepción al momento de tu llegada. Por favor, indícanos tu número de *CI/Pasaporte* o *Celular* en mostrador para ubicar tu reserva rápidamente.\n\n¡Te esperamos!";
                         $wa_url = "https://web.whatsapp.com/send?phone=" . $tel_limpio . "&text=" . rawurlencode($mensaje_wa);
                         $onsubmit = "onsubmit=\"event.preventDefault(); window.open('" . $wa_url . "', '_blank'); setTimeout(() => { this.submit(); }, 500);\"";
                     }
@@ -292,6 +300,11 @@ $resultado = $conexion->query($sql);
                         <input type="hidden" name="id" value="<?= $fila['id'] ?>">
                         <input type="hidden" name="total_pagar" id="total_pagar_<?= $fila['id'] ?>" value="<?= $fila['total'] ?>">
                         <?php $noches_calculadas = max(1, (strtotime($fila['fecha_salida']) - strtotime($fila['fecha_ingreso'])) / 86400); ?>
+
+                        <div class="alert alert-light border shadow-sm mb-4">
+                            <h6 class="fw-bold mb-1"><i class="lni lni-user me-1"></i> Huésped: <?= htmlspecialchars($fila['nombre'] ?? '') ?></h6>
+                            <p class="mb-0 small text-muted">Habitación(es) Asignada(s): <strong class="text-primary fs-6"><?= htmlspecialchars($fila['numeros_habitaciones'] ?? 'Sin Asignar') ?></strong> - <?= htmlspecialchars($fila['tipos_habitaciones'] ?? 'N/A') ?></p>
+                        </div>
 
                         <div class="row">
                             <div class="col-md-6 border-end pe-4">
@@ -406,5 +419,20 @@ $resultado = $conexion->query($sql);
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
   <script src="../assets/js/habitapp.js"></script>
+
+  <!-- Auto-abrir modal desde el Mapa de Habitaciones -->
+  <?php if (isset($_GET['open_modal']) && isset($_GET['id'])): ?>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let modalId = '';
+        <?php if ($_GET['open_modal'] == 'checkin'): ?> modalId = '#modalCheckin<?= intval($_GET['id']) ?>'; <?php endif; ?>
+        <?php if ($_GET['open_modal'] == 'checkout'): ?> modalId = '#modalCheckout<?= intval($_GET['id']) ?>'; <?php endif; ?>
+        
+        if (modalId && document.querySelector(modalId)) {
+            new bootstrap.Modal(document.querySelector(modalId)).show();
+        }
+    });
+  </script>
+  <?php endif; ?>
 </body>
 </html>

@@ -221,7 +221,8 @@ CREATE TABLE `reservas` (
   `garage` int(11) DEFAULT 0,
   `total` decimal(10,2) NOT NULL DEFAULT 0.00,
   `foto_ci` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `confirmada_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

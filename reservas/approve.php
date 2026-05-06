@@ -11,6 +11,9 @@ include '../conexion.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id_reserva = intval($_POST['id'] ?? 0);
+    $desayuno = isset($_POST['desayuno']) ? 1 : 0;
+    $garage = intval($_POST['garage'] ?? 0);
+    $total_pagar = floatval($_POST['total_pagar'] ?? 0);
 
     if ($id_reserva > 0) {
         
@@ -18,9 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conexion->begin_transaction();
 
         try {
-            // 1. Cambiar la reserva a CONFIRMADA
-            $stmt_reserva = $conexion->prepare("UPDATE reservas SET estado = 'CONFIRMADA' WHERE id = ?");
-            $stmt_reserva->bind_param("i", $id_reserva);
+            // 1. Cambiar la reserva a CONFIRMADA, guardar edición de servicios y establecer fecha límite
+            $stmt_reserva = $conexion->prepare("UPDATE reservas SET estado = 'CONFIRMADA', confirmada_at = NOW(), desayuno = ?, garage = ?, total = ? WHERE id = ?");
+            $stmt_reserva->bind_param("iidi", $desayuno, $garage, $total_pagar, $id_reserva);
             $stmt_reserva->execute();
 
             // 2. Bloquear TODAS las habitaciones vinculadas pasándolas a RESERVADA

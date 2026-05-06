@@ -44,7 +44,8 @@ if ($res_stats) {
 
 // Consulta para obtener TODAS las habitaciones + Nombre del huésped
 $sql = "SELECT h.id_habitacion, h.numero, h.piso, t.codigo, t.nombre, h.estado,
-               MAX(r.nombre) as huesped
+               MAX(r.nombre) as huesped,
+               MAX(r.id) as reserva_id
         FROM habitacion h 
         INNER JOIN tipo_habitacion t ON h.id_tipo = t.id_tipo 
         LEFT JOIN detalle_reserva dr ON dr.habitacion_id = h.id_habitacion
@@ -158,14 +159,13 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                 if (isset($superior[$n])) {
                                   $hab = $superior[$n];
                                   $estado = strtoupper($hab['estado']);
-                                  $bg_td = ($estado == 'MANTENIMIENTO') ? 'background-color: #e2e3e5;' : '';
                                   $foquito = '';
                                   switch ($estado) {
-                                    case 'DISPONIBLE':     $gif = 'DISPONIBLE.gif'; $foquito = '<div class="foquito bg-success"></div>'; break;
-                                    case 'OCUPADA':        $gif = 'OCUPADA.gif'; $foquito = '<div class="foquito bg-danger"></div>'; break;
-                                    case 'RESERVADA':      $gif = 'RESERVADA.gif'; $foquito = '<div class="foquito bg-warning"></div>'; break;
-                                    case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; break;
-                                    default:               $gif = 'default.gif'; break;
+                                    case 'DISPONIBLE':     $gif = 'DISPONIBLE.gif'; $bg_td = 'background-color: #d1e7dd;'; break;
+                                    case 'OCUPADA':        $gif = 'OCUPADA.gif'; $bg_td = 'background-color: #f8d7da;'; break;
+                                    case 'RESERVADA':      $gif = 'RESERVADA.gif'; $bg_td = 'background-color: #fff3cd;'; $foquito = '<div class="foquito bg-warning"></div>'; break;
+                                    case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; $bg_td = 'background-color: #e2e3e5;'; break;
+                                    default:               $gif = 'default.gif'; $bg_td = ''; break;
                                   }
                                 echo '<td style="position: relative; height: 120px; overflow: hidden; '.$bg_td.'">';
                                   echo $foquito;
@@ -179,7 +179,10 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                   } elseif ($estado == 'MANTENIMIENTO') { 
                                       echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
                                   } elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
-                                      echo '<a href="../reservas/index.php" style="display:block; width:100%; height:100%; color:inherit; text-decoration:none;">';
+                                      $link_url = "../reservas/index.php";
+                                      if ($estado == 'RESERVADA' && !empty($hab['reserva_id'])) $link_url .= "?open_modal=checkin&id=" . $hab['reserva_id'];
+                                      elseif ($estado == 'OCUPADA' && !empty($hab['reserva_id'])) $link_url .= "?open_modal=checkout&id=" . $hab['reserva_id'];
+                                      echo '<a href="'.$link_url.'" style="display:block; width:100%; height:100%; color:inherit; text-decoration:none;">';
                                   }
                                   
                                   $badge_huesped = '';
@@ -211,14 +214,13 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                 if (isset($inferior[$n])) {
                                   $hab = $inferior[$n];
                                   $estado = strtoupper($hab['estado']);
-                                  $bg_td = ($estado == 'MANTENIMIENTO') ? 'background-color: #e2e3e5;' : '';
                                   $foquito = '';
                                   switch ($estado) {
-                                    case 'DISPONIBLE':     $gif = 'DISPONIBLE.gif'; $foquito = '<div class="foquito bg-success"></div>'; break;
-                                    case 'OCUPADA':        $gif = 'OCUPADA.gif'; $foquito = '<div class="foquito bg-danger"></div>'; break;
-                                    case 'RESERVADA':      $gif = 'RESERVADA.gif'; $foquito = '<div class="foquito bg-warning"></div>'; break;
-                                    case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; break;
-                                    default:               $gif = 'default.gif'; break;
+                                    case 'DISPONIBLE':     $gif = 'DISPONIBLE.gif'; $bg_td = 'background-color: #d1e7dd;'; break;
+                                    case 'OCUPADA':        $gif = 'OCUPADA.gif'; $bg_td = 'background-color: #f8d7da;'; break;
+                                    case 'RESERVADA':      $gif = 'RESERVADA.gif'; $bg_td = 'background-color: #fff3cd;'; $foquito = '<div class="foquito bg-warning"></div>'; break;
+                                    case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; $bg_td = 'background-color: #e2e3e5;'; break;
+                                    default:               $gif = 'default.gif'; $bg_td = ''; break;
                                   }
                                 echo '<td style="position: relative; height: 120px; overflow: hidden; '.$bg_td.'">';
                                   echo $foquito;
@@ -232,7 +234,10 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                   } elseif ($estado == 'MANTENIMIENTO') { 
                                       echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
                                   } elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
-                                      echo '<a href="../reservas/index.php" style="display:block; width:100%; height:100%; color:inherit; text-decoration:none;">';
+                                      $link_url = "../reservas/index.php";
+                                      if ($estado == 'RESERVADA' && !empty($hab['reserva_id'])) $link_url .= "?open_modal=checkin&id=" . $hab['reserva_id'];
+                                      elseif ($estado == 'OCUPADA' && !empty($hab['reserva_id'])) $link_url .= "?open_modal=checkout&id=" . $hab['reserva_id'];
+                                      echo '<a href="'.$link_url.'" style="display:block; width:100%; height:100%; color:inherit; text-decoration:none;">';
                                   }
                                   
                                   $badge_huesped = '';
@@ -257,14 +262,13 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                 if (isset($inferior[$n])) {
                                   $hab = $inferior[$n];
                                   $estado = strtoupper($hab['estado']);
-                                  $bg_td = ($estado == 'MANTENIMIENTO') ? 'background-color: #e2e3e5;' : '';
                                   $foquito = '';
                                   switch ($estado) {
-                                    case 'DISPONIBLE':     $gif = 'DISPONIBLE.gif'; $foquito = '<div class="foquito bg-success"></div>'; break;
-                                    case 'OCUPADA':        $gif = 'OCUPADA.gif'; $foquito = '<div class="foquito bg-danger"></div>'; break;
-                                    case 'RESERVADA':      $gif = 'RESERVADA.gif'; $foquito = '<div class="foquito bg-warning"></div>'; break;
-                                    case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; break;
-                                    default:               $gif = 'default.gif'; break;
+                                    case 'DISPONIBLE':     $gif = 'DISPONIBLE.gif'; $bg_td = 'background-color: #d1e7dd;'; break;
+                                    case 'OCUPADA':        $gif = 'OCUPADA.gif'; $bg_td = 'background-color: #f8d7da;'; break;
+                                    case 'RESERVADA':      $gif = 'RESERVADA.gif'; $bg_td = 'background-color: #fff3cd;'; $foquito = '<div class="foquito bg-warning"></div>'; break;
+                                    case 'MANTENIMIENTO':  $gif = 'MANTENIMIENTO.gif'; $bg_td = 'background-color: #e2e3e5;'; break;
+                                    default:               $gif = 'default.gif'; $bg_td = ''; break;
                                   }
                                   
                                   echo '<td style="position: relative; height: 120px; overflow: hidden; '.$bg_td.'">';
@@ -279,7 +283,10 @@ $total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
                                   } elseif ($estado == 'MANTENIMIENTO') { 
                                       echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
                                   } elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
-                                      echo '<a href="../reservas/index.php" style="display:block; width:100%; height:100%; color:inherit; text-decoration:none;">';
+                                      $link_url = "../reservas/index.php";
+                                      if ($estado == 'RESERVADA' && !empty($hab['reserva_id'])) $link_url .= "?open_modal=checkin&id=" . $hab['reserva_id'];
+                                      elseif ($estado == 'OCUPADA' && !empty($hab['reserva_id'])) $link_url .= "?open_modal=checkout&id=" . $hab['reserva_id'];
+                                      echo '<a href="'.$link_url.'" style="display:block; width:100%; height:100%; color:inherit; text-decoration:none;">';
                                   }
                                   
                                   $badge_huesped = '';
