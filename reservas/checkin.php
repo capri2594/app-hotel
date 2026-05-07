@@ -56,9 +56,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_reserva->bind_param("siidi", $foto_ruta, $desayuno, $garage, $total_pagar, $id_reserva);
             $stmt_reserva->execute();
 
-            // B. Registrar el Pago Completo
-            $stmt_pago = $conexion->prepare("INSERT INTO pagos (reserva_id, tipo_pago, monto, monto_recibido, cambio) VALUES (?, ?, ?, ?, ?)");
-            $stmt_pago->bind_param("isddd", $id_reserva, $tipo_pago, $total_pagar, $monto_recibido, $cambio);
+            // B. Registrar el Pago Completo con Detalle Automático
+            $stmt_habs = $conexion->prepare("SELECT GROUP_CONCAT(h.numero SEPARATOR ', ') as numeros FROM detalle_reserva dr JOIN habitacion h ON dr.habitacion_id = h.id_habitacion WHERE dr.reserva_id = ?");
+            $stmt_habs->bind_param("i", $id_reserva);
+            $stmt_habs->execute();
+            $habs_result = $stmt_habs->get_result()->fetch_assoc();
+            $detalle_pago = "Pago de Estadía - Hab: " . ($habs_result['numeros'] ?? 'S/A');
+            
+            $stmt_pago = $conexion->prepare("INSERT INTO pagos (reserva_id, tipo_pago, monto, monto_recibido, cambio, detalle) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt_pago->bind_param("isddds", $id_reserva, $tipo_pago, $total_pagar, $monto_recibido, $cambio, $detalle_pago);
             $stmt_pago->execute();
 
             // C. Cambiar estado físico de las habitaciones en el mapa a 'OCUPADA'

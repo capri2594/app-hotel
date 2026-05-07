@@ -71,7 +71,7 @@ function imageToBase64($path) {
 }
 
 $logo1 = imageToBase64('../../assets/images/logo/logo_1.png');
-$logo2 = imageToBase64('../../assets/images/logo/logo_2.png');
+$logo2 = imageToBase64('../../assets/images/logo/logo_pie.png');
 $logo3 = imageToBase64('../../assets/images/logo/logo_3.png');
 $logo4 = imageToBase64('../../assets/images/logo/logo_4.png');
 
@@ -108,16 +108,16 @@ $html = '
     <div class="container">
         <table class="header" border="0" cellpadding="0" cellspacing="0">
             <tr>
-                <td width="20%" class="text-center">' . ($logo1 ? '<img src="'.$logo1.'" style="max-height: 70px;">' : '') . '</td>
+                <td width="20%" class="text-center">' . ($logo1 ? '<img src="'.$logo1.'" height="70">' : '') . '</td>
                 <td width="60%" class="company-details">
-                    ' . ($logo2 ? '<img src="'.$logo2.'" style="max-height: 40px; margin-bottom: 5px;"><br>' : '') . '
+                    ' . ($logo2 ? '<img src="'.$logo2.'" height="40" style="margin-bottom: 5px;"><br>' : '') . '
                     <h1>' . htmlspecialchars(HOTEL_NOMBRE) . '</h1>
                     <p><strong>' . htmlspecialchars(HOTEL_RAZON_SOCIAL) . '</strong></p>
                     <p>NIT: ' . htmlspecialchars(HOTEL_NIT) . '</p>
                     <p>' . htmlspecialchars(HOTEL_DIRECCION) . ' | ' . htmlspecialchars(HOTEL_CIUDAD) . '</p>
                     <p>Tel: ' . htmlspecialchars(HOTEL_TELEFONO) . ' | WA: ' . htmlspecialchars(HOTEL_WHATSAPP) . '</p>
                 </td>
-                <td width="20%" class="text-center">' . ($logo3 ? '<img src="'.$logo3.'" style="max-height: 70px;">' : '') . '</td>
+                <td width="20%" class="text-center">' . ($logo3 ? '<img src="'.$logo3.'" height="70">' : '') . '</td>
             </tr>
         </table>
 
@@ -163,7 +163,7 @@ $html .= '  </tbody>
             <tr class="total-row"><td class="text-right">TOTAL ABONADO:</td><td class="text-right">' . htmlspecialchars(MONEDA_SIMBOLO) . ' ' . number_format($total_pagado, 2) . '</td></tr>
         </table>
         <div class="footer">
-            ' . ($logo4 ? '<img src="'.$logo4.'" style="max-height: 50px; margin-bottom: 10px;"><br>' : '') . '
+            ' . ($logo4 ? '<img src="'.$logo4.'" height="50" style="margin-bottom: 10px;"><br>' : '') . '
             <p><strong>Gracias por elegir ' . htmlspecialchars(HOTEL_NOMBRE) . '</strong></p>
             <p>Este documento es un comprobante de ingresos por estadía y consumos internos, no representa una factura fiscal.</p>
         </div>
@@ -173,7 +173,7 @@ $html .= '  </tbody>
 
 $options = new Options();
 $options->set('isHtml5ParserEnabled', true);
-$options->set('isRemoteEnabled', true);
+$options->set('isRemoteEnabled', false);
 $dompdf = new Dompdf($options);
 $dompdf->loadHtml($html);
 $dompdf->setPaper('letter', 'portrait');

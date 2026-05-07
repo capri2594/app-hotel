@@ -51,6 +51,9 @@ $username_actual = $user_data['usuario'] ?? '';
           <li class="nav-item">
             <a class="nav-link" id="nav-reservas" href="reservas/index.php" target="content_frame" onclick="showIframe('nav-reservas')">📅 Reservas</a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" id="nav-reportes" href="reportes/reconciliation.php" target="content_frame" onclick="showIframe('nav-reportes')">📈 Reportes</a>
+          </li>
           <!-- Restricción visual de acuerdo al rol -->
           <?php if ($_SESSION['rol'] == 'SuperAdmin' || $_SESSION['rol'] == 'Administrador'): ?>
           <li class="nav-item">
@@ -76,7 +79,7 @@ $username_actual = $user_data['usuario'] ?? '';
   </nav>
 
   <!-- Vista de Tarjetas (Inicio) -->
-  <div id="dashboard-home" class="container mt-5 flex-grow-1 overflow-auto">
+  <div id="dashboard-home" class="container pt-4 pb-4 flex-grow-1 overflow-auto">
     <!-- Alertas Flash de éxito o error -->
     <?php if (isset($_SESSION['msg'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -121,6 +124,18 @@ $username_actual = $user_data['usuario'] ?? '';
             <h5 class="card-title fw-bold">Gestión de Reservas</h5>
             <p class="card-text text-muted">Aprobar solicitudes web, realizar Check-in y registrar pagos.</p>
             <a href="reservas/index.php" target="content_frame" onclick="showIframe('nav-reservas')" class="btn btn-outline-success mt-2 w-100 fw-bold">Ir a Reservas</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjeta Reportes -->
+      <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100 rounded-3">
+          <div class="card-body text-center p-4">
+            <div class="mb-3"><span class="badge bg-info rounded-circle p-3 fs-3 text-dark">📈</span></div>
+            <h5 class="card-title fw-bold">Reportes y Arqueos</h5>
+            <p class="card-text text-muted">Conciliación de caja diaria, reportes mensuales y proyecciones.</p>
+            <a href="reportes/reconciliation.php" target="content_frame" onclick="showIframe('nav-reportes')" class="btn btn-outline-info mt-2 w-100 text-dark fw-bold">Ir a Reportes</a>
           </div>
         </div>
       </div>
