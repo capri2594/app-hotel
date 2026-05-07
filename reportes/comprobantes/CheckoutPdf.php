@@ -110,7 +110,7 @@ $html = '
             <tr>
                 <td width="20%" class="text-center">' . ($logo1 ? '<img src="'.$logo1.'" height="70">' : '') . '</td>
                 <td width="60%" class="company-details">
-                    ' . ($logo2 ? '<img src="'.$logo2.'" height="40" style="margin-bottom: 5px;"><br>' : '') . '
+                    ' . ($logo2 ? '<img src="'.$logo2.'" style="width: 100%; max-width: 400px; margin-bottom: 5px;"><br>' : '') . '
                     <h1>' . htmlspecialchars(HOTEL_NOMBRE) . '</h1>
                     <p><strong>' . htmlspecialchars(HOTEL_RAZON_SOCIAL) . '</strong></p>
                     <p>NIT: ' . htmlspecialchars(HOTEL_NIT) . '</p>

@@ -42,7 +42,7 @@ function imageToBase64($path) {
 }
 
 $logo1 = imageToBase64('../../assets/images/logo/logo_1.png');
-$logo2 = imageToBase64('../../assets/images/logo/logo_2.png');
+$logo2 = imageToBase64('../../assets/images/logo/logo_pie.png');
 $logo3 = imageToBase64('../../assets/images/logo/logo_3.png');
 
 $html = '
@@ -77,7 +77,7 @@ $html = '
             <tr>
                 <td width="20%" class="text-center">' . ($logo1 ? '<img src="'.$logo1.'" style="max-height: 60px;">' : '') . '</td>
                 <td width="60%" class="company-details">
-                    ' . ($logo2 ? '<img src="'.$logo2.'" style="max-height: 35px; margin-bottom: 5px;"><br>' : '') . '
+                    ' . ($logo2 ? '<img src="'.$logo2.'" style="width: 100%; max-width: 400px; margin-bottom: 5px;"><br>' : '') . '
                     <h1>' . htmlspecialchars(HOTEL_NOMBRE) . '</h1>
                     <p>NIT: ' . htmlspecialchars(HOTEL_NIT) . '</p>
                 </td>
