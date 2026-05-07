@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
             // A. Actualizar estado de reserva y foto
-            $stmt_reserva = $conexion->prepare("UPDATE reservas SET estado = 'HOSPEDADO', foto_ci = ?, desayuno = ?, garage = ?, total = ? WHERE id = ?");
+            $stmt_reserva = $conexion->prepare("UPDATE reservas SET estado = 'OCUPADA', foto_ci = ?, desayuno = ?, garage = ?, total = ? WHERE id = ?");
             $stmt_reserva->bind_param("siidi", $foto_ruta, $desayuno, $garage, $total_pagar, $id_reserva);
             $stmt_reserva->execute();
 

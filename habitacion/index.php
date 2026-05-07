@@ -14,8 +14,8 @@ header("Pragma: no-cache");
 
 include '../conexion.php'; 
 
-// LIMPIEZA AUTOMÁTICA: Cancelar reservas web pendientes con más de 12 horas
-$conexion->query("UPDATE reservas SET estado = 'CANCELADA' WHERE estado = 'PENDIENTE' AND created_at <= NOW() - INTERVAL 12 HOUR");
+// LIMPIEZA AUTOMÁTICA: Cancelar reservas web solicitadas con más de 12 horas
+$conexion->query("UPDATE reservas SET estado = 'EXPIRADA' WHERE estado = 'SOLICITADA' AND created_at <= NOW() - INTERVAL 12 HOUR");
 ?>
 <!DOCTYPE html>
 <html class="no-js" lang="zxx">
@@ -49,7 +49,7 @@ $sql = "SELECT h.id_habitacion, h.numero, h.piso, t.codigo, t.nombre, h.estado,
         FROM habitacion h 
         INNER JOIN tipo_habitacion t ON h.id_tipo = t.id_tipo 
         LEFT JOIN detalle_reserva dr ON dr.habitacion_id = h.id_habitacion
-        LEFT JOIN reservas r ON dr.reserva_id = r.id AND r.estado IN ('HOSPEDADO', 'CONFIRMADA')
+        LEFT JOIN reservas r ON dr.reserva_id = r.id AND r.estado IN ('OCUPADA', 'RESERVADA')
         GROUP BY h.id_habitacion
         ORDER BY h.piso ASC, h.numero ASC";
 $resultado = $conexion->query($sql);
@@ -62,20 +62,20 @@ if ($resultado && $resultado->num_rows > 0) {
     }
 }
 
-// Obtener cantidad de reservas pendientes
-$sql_pendientes = "SELECT COUNT(*) as total FROM reservas WHERE estado = 'PENDIENTE'";
-$res_pendientes = $conexion->query($sql_pendientes);
-$total_pendientes = $res_pendientes->fetch_assoc()['total'] ?? 0;
+// Obtener cantidad de reservas solicitadas
+$sql_solicitadas = "SELECT COUNT(*) as total FROM reservas WHERE estado = 'SOLICITADA'";
+$res_solicitadas = $conexion->query($sql_solicitadas);
+$total_solicitadas = $res_solicitadas->fetch_assoc()['total'] ?? 0;
 ?>
 <body class="bg-light py-4">
     <div class="container">
         
         <!-- Alerta de Reservas Web Pendientes -->
-        <?php if ($total_pendientes > 0): ?>
+        <?php if ($total_solicitadas > 0): ?>
         <div class="alert alert-warning alert-dismissible fade show shadow-sm border-warning mt-2 d-flex align-items-center justify-content-between" role="alert">
             <div>
                 <i class="lni lni-alarm-clock fs-4 text-danger me-2 align-middle"></i>
-                <span class="align-middle fs-6 text-dark"><strong>¡Alerta de Recepción!</strong> Tienes <strong><?= $total_pendientes ?></strong> nueva(s) reserva(s) pendiente(s) desde la web.</span>
+                <span class="align-middle fs-6 text-dark"><strong>¡Alerta de Recepción!</strong> Tienes <strong><?= $total_solicitadas ?></strong> nueva(s) reserva(s) solicitada(s) desde la web.</span>
             </div>
             <a href="../reservas/index.php" class="btn btn-danger btn-sm fw-bold shadow-sm">Atender Reservas ➡</a>
             <button type="button" class="btn-close position-relative top-0 end-0 ms-2" data-bs-dismiss="alert" aria-label="Close"></button>

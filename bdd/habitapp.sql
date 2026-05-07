@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 06-05-2026 a las 17:14:22
+-- Tiempo de generación: 07-05-2026 a las 15:53:41
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -39,7 +39,13 @@ CREATE TABLE `detalle_reserva` (
 
 INSERT INTO `detalle_reserva` (`id`, `reserva_id`, `habitacion_id`) VALUES
 (1, 1, 6),
-(2, 2, 12);
+(2, 2, 12),
+(3, 3, 2),
+(4, 3, 5),
+(5, 3, 9),
+(6, 4, 13),
+(7, 4, 17),
+(8, 4, 20);
 
 -- --------------------------------------------------------
 
@@ -90,17 +96,17 @@ CREATE TABLE `habitacion` (
 
 INSERT INTO `habitacion` (`id_habitacion`, `numero`, `id_tipo`, `piso`, `estado`) VALUES
 (1, 401, 1, 4, 'DISPONIBLE'),
-(2, 402, 2, 4, 'DISPONIBLE'),
+(2, 402, 2, 4, 'RESERVADA'),
 (3, 403, 3, 4, 'DISPONIBLE'),
 (4, 404, 1, 4, 'MANTENIMIENTO'),
-(5, 405, 2, 4, 'DISPONIBLE'),
-(6, 406, 4, 4, 'OCUPADA'),
+(5, 405, 2, 4, 'RESERVADA'),
+(6, 406, 4, 4, 'DISPONIBLE'),
 (7, 407, 3, 4, 'DISPONIBLE'),
 (8, 408, 1, 4, 'DISPONIBLE'),
-(9, 409, 2, 4, 'DISPONIBLE'),
+(9, 409, 2, 4, 'RESERVADA'),
 (10, 410, 1, 4, 'DISPONIBLE'),
 (11, 411, 3, 4, 'DISPONIBLE'),
-(12, 412, 5, 4, 'DISPONIBLE'),
+(12, 412, 5, 4, 'RESERVADA'),
 (13, 413, 2, 4, 'DISPONIBLE'),
 (14, 414, 1, 4, 'DISPONIBLE'),
 (15, 415, 3, 4, 'DISPONIBLE'),
@@ -193,6 +199,7 @@ CREATE TABLE `pagos` (
   `monto` decimal(10,2) NOT NULL,
   `monto_recibido` decimal(10,2) DEFAULT NULL,
   `cambio` decimal(10,2) DEFAULT NULL,
+  `detalle` varchar(255) DEFAULT NULL,
   `fecha` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -200,8 +207,9 @@ CREATE TABLE `pagos` (
 -- Volcado de datos para la tabla `pagos`
 --
 
-INSERT INTO `pagos` (`id`, `reserva_id`, `tipo_pago`, `monto`, `monto_recibido`, `cambio`, `fecha`) VALUES
-(3, 1, 'EFECTIVO', 580.00, 600.00, 20.00, '2026-05-06 14:21:39');
+INSERT INTO `pagos` (`id`, `reserva_id`, `tipo_pago`, `monto`, `monto_recibido`, `cambio`, `detalle`, `fecha`) VALUES
+(3, 1, 'EFECTIVO', 580.00, 600.00, 20.00, NULL, '2026-05-06 14:21:39'),
+(4, 1, 'EFECTIVO', 35.00, NULL, NULL, 'Desayuno adicional', '2026-05-07 13:47:37');
 
 -- --------------------------------------------------------
 
@@ -216,22 +224,25 @@ CREATE TABLE `reservas` (
   `telefono` varchar(20) DEFAULT NULL,
   `fecha_ingreso` date NOT NULL,
   `fecha_salida` date NOT NULL,
-  `estado` enum('PENDIENTE','CONFIRMADA','HOSPEDADO','FINALIZADA','CANCELADA') DEFAULT 'PENDIENTE',
+  `estado` enum('SOLICITADA','RESERVADA','OCUPADA','FINALIZADA','EXPIRADA') DEFAULT 'SOLICITADA',
   `desayuno` tinyint(1) DEFAULT 0,
   `garage` int(11) DEFAULT 0,
   `total` decimal(10,2) NOT NULL DEFAULT 0.00,
   `foto_ci` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `confirmada_at` timestamp NULL DEFAULT NULL
+  `confirmada_at` timestamp NULL DEFAULT NULL,
+  `checkout_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `reservas`
 --
 
-INSERT INTO `reservas` (`id`, `nombre`, `ci`, `telefono`, `fecha_ingreso`, `fecha_salida`, `estado`, `desayuno`, `garage`, `total`, `foto_ci`, `created_at`) VALUES
-(1, 'Carla Marzana', '16227649', '+591 69604048', '2026-05-06', '2026-05-07', 'HOSPEDADO', 1, 2, 580.00, 'uploads/ci/ci_reserva_1_1778077299.png', '2026-05-06 12:58:24'),
-(2, 'Reynaldo Flores', '7403044', '+591 60408150', '2026-05-06', '2026-05-07', 'PENDIENTE', 1, 2, 840.00, NULL, '2026-05-06 13:03:14');
+INSERT INTO `reservas` (`id`, `nombre`, `ci`, `telefono`, `fecha_ingreso`, `fecha_salida`, `estado`, `desayuno`, `garage`, `total`, `foto_ci`, `created_at`, `confirmada_at`, `checkout_at`) VALUES
+(1, 'Carla Marzana', '16227649', '+591 69604048', '2026-05-06', '2026-05-07', 'FINALIZADA', 1, 2, 580.00, 'uploads/ci/ci_reserva_1_1778077299.png', '2026-05-06 12:58:24', NULL, '2026-05-07 13:47:37'),
+(2, 'Reynaldo Flores', '7403044', '+591 60408150', '2026-05-06', '2026-05-07', 'RESERVADA', 1, 2, 840.00, NULL, '2026-05-06 13:03:14', NULL, NULL),
+(3, 'Reynaldo Flores', '74030441', '+591 60408150', '2026-05-06', '2026-05-07', 'RESERVADA', 1, 1, 950.00, NULL, '2026-05-06 16:03:39', NULL, NULL),
+(4, 'Reynaldo Flores', '740304412', '+591 60408150', '2026-05-06', '2026-05-07', 'EXPIRADA', 1, 1, 950.00, NULL, '2026-05-06 16:07:07', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -374,7 +385,7 @@ ALTER TABLE `usuario`
 -- AUTO_INCREMENT de la tabla `detalle_reserva`
 --
 ALTER TABLE `detalle_reserva`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `funcionario`
@@ -392,13 +403,13 @@ ALTER TABLE `habitacion`
 -- AUTO_INCREMENT de la tabla `pagos`
 --
 ALTER TABLE `pagos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `reservas`
 --
 ALTER TABLE `reservas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `rol`

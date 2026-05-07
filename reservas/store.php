@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // CONTROL DE SPAM: Solo para clientes web (El recepcionista sí puede registrar múltiples reservas al mismo CI)
     if (!$is_admin) {
-        $sql_check_ci = "SELECT id FROM reservas WHERE ci = ? AND estado IN ('PENDIENTE', 'CONFIRMADA')";
+        $sql_check_ci = "SELECT id FROM reservas WHERE ci = ? AND estado IN ('SOLICITADA', 'RESERVADA')";
         $stmt_check_ci = $conexion->prepare($sql_check_ci);
         $stmt_check_ci->bind_param("s", $ci);
         $stmt_check_ci->execute();
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 AND h.id_habitacion NOT IN (
                     SELECT dr.habitacion_id FROM detalle_reserva dr
                     INNER JOIN reservas r ON dr.reserva_id = r.id
-                    WHERE r.estado IN ('PENDIENTE', 'CONFIRMADA', 'HOSPEDADO') 
+                    WHERE r.estado IN ('SOLICITADA', 'RESERVADA', 'OCUPADA') 
                     AND (r.fecha_ingreso < ? AND r.fecha_salida > ?)
                 )
             ";
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         AND id_habitacion NOT IN (
                             SELECT dr.habitacion_id FROM detalle_reserva dr
                             INNER JOIN reservas r ON dr.reserva_id = r.id
-                            WHERE r.estado IN ('PENDIENTE', 'CONFIRMADA', 'HOSPEDADO') 
+                            WHERE r.estado IN ('SOLICITADA', 'RESERVADA', 'OCUPADA') 
                             AND (r.fecha_ingreso < ? AND r.fecha_salida > ?)
                         )
                         LIMIT ?
@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $total_reserva += (($desayuno ? 30 * $capacidad_total : 0) + ($garage * 20)) * $noches;
 
         // 2. Guardar CABECERA (Reserva)
-        $sql_reserva = "INSERT INTO reservas (nombre, ci, telefono, fecha_ingreso, fecha_salida, estado, desayuno, garage, total) VALUES (?, ?, ?, ?, ?, 'PENDIENTE', ?, ?, ?)";
+        $sql_reserva = "INSERT INTO reservas (nombre, ci, telefono, fecha_ingreso, fecha_salida, estado, desayuno, garage, total) VALUES (?, ?, ?, ?, ?, 'SOLICITADA', ?, ?, ?)";
         $stmt_reserva = $conexion->prepare($sql_reserva);
         $stmt_reserva->bind_param("sssssiid", $nombre, $ci, $telefono, $fecha_ingreso, $fecha_salida, $desayuno, $garage, $total_reserva);
         $stmt_reserva->execute();

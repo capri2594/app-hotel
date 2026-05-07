@@ -12,15 +12,15 @@ include '../conexion.php';
 // PARCHE AUTOMÁTICO: Agregar columna confirmada_at si no existe
 $conexion->query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS confirmada_at TIMESTAMP NULL AFTER created_at");
 
-// LIMPIEZA AUTOMÁTICA: Cancelar reservas web pendientes con más de 12 horas
-$conexion->query("UPDATE reservas SET estado = 'CANCELADA' WHERE estado = 'PENDIENTE' AND created_at <= NOW() - INTERVAL 12 HOUR");
+// LIMPIEZA AUTOMÁTICA: Cancelar reservas web solicitadas con más de 12 horas
+$conexion->query("UPDATE reservas SET estado = 'EXPIRADA' WHERE estado = 'SOLICITADA' AND created_at <= NOW() - INTERVAL 12 HOUR");
 // LIMPIEZA AUTOMÁTICA: Cancelar reservas confirmadas (Reservadas) que no hagan check-in en 12 horas
-$conexion->query("UPDATE reservas SET estado = 'CANCELADA' WHERE estado = 'CONFIRMADA' AND confirmada_at <= NOW() - INTERVAL 12 HOUR");
+$conexion->query("UPDATE reservas SET estado = 'EXPIRADA' WHERE estado = 'RESERVADA' AND confirmada_at <= NOW() - INTERVAL 12 HOUR");
 
 // Obtener conteos para las pestañas
 $sql_counts = "SELECT estado, COUNT(*) as total FROM reservas GROUP BY estado";
 $res_counts = $conexion->query($sql_counts);
-$counts = ['PENDIENTE' => 0, 'CONFIRMADA' => 0, 'HOSPEDADO' => 0, 'FINALIZADA' => 0, 'CANCELADA' => 0];
+$counts = ['SOLICITADA' => 0, 'RESERVADA' => 0, 'OCUPADA' => 0, 'FINALIZADA' => 0, 'EXPIRADA' => 0];
 $total_reservas = 0;
 if ($res_counts) {
     while ($row = $res_counts->fetch_assoc()) {
@@ -40,7 +40,7 @@ $sql = "SELECT r.*,
         LEFT JOIN habitacion h ON dr.habitacion_id = h.id_habitacion
         LEFT JOIN tipo_habitacion t ON h.id_tipo = t.id_tipo
         GROUP BY r.id
-        ORDER BY r.id DESC";
+        ORDER BY FIELD(r.estado, 'SOLICITADA', 'RESERVADA', 'OCUPADA', 'FINALIZADA', 'EXPIRADA'), r.id DESC";
 $resultado = $conexion->query($sql);
 ?>
 <!DOCTYPE html>
@@ -68,6 +68,21 @@ $resultado = $conexion->query($sql);
         </div>
     <?php endif; ?>
 
+    <!-- Alerta para Imprimir Comprobante de Check-out -->
+    <?php if (isset($_SESSION['last_checkout_id'])): ?>
+        <div class="alert alert-info alert-dismissible fade show shadow-sm border-info d-flex justify-content-between align-items-center" role="alert">
+            <div>
+                <i class="lni lni-printer fs-4 me-2 align-middle"></i>
+                <span class="align-middle">Check-out finalizado. ¿Desea generar el comprobante de pago?</span>
+            </div>
+            <form action="../reportes/comprobantes/CheckoutPdf.php" method="POST" target="_blank">
+                <input type="hidden" name="id" value="<?= intval($_SESSION['last_checkout_id']) ?>">
+                <button type="submit" class="btn btn-primary fw-bold shadow-sm"><i class="lni lni-printer me-1"></i> Imprimir Comprobante</button>
+            </form>
+        </div>
+        <?php unset($_SESSION['last_checkout_id']); // Limpiar la sesión para que no vuelva a aparecer ?>
+    <?php endif; ?>
+
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h2 class="fw-bold text-dark"><i class="lni lni-agenda me-2"></i>Gestión de Reservas</h2>
       <a href="../habitacion/index.php" class="btn btn-outline-primary fw-bold shadow-sm">
@@ -85,18 +100,28 @@ $resultado = $conexion->query($sql);
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="PENDIENTE">
-                        ⏳ Pendientes <span class="badge bg-primary text-white ms-1 rounded-pill"><?= $counts['PENDIENTE'] ?></span>
+                    <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="SOLICITADA">
+                        ⏳ Solicitadas <span class="badge bg-primary text-white ms-1 rounded-pill"><?= $counts['SOLICITADA'] ?></span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="CONFIRMADA">
-                        ✅ Reservadas <span class="badge bg-warning text-dark ms-1 rounded-pill"><?= $counts['CONFIRMADA'] ?></span>
+                    <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="RESERVADA">
+                        ✅ Reservadas <span class="badge bg-warning text-dark ms-1 rounded-pill"><?= $counts['RESERVADA'] ?></span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="HOSPEDADO">
-                        🛏️ Ocupadas <span class="badge bg-danger text-white ms-1 rounded-pill"><?= $counts['HOSPEDADO'] ?></span>
+                    <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="OCUPADA">
+                        🛏️ Ocupadas <span class="badge bg-danger text-white ms-1 rounded-pill"><?= $counts['OCUPADA'] ?></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="FINALIZADA">
+                        🏁 Finalizadas <span class="badge bg-success text-white ms-1 rounded-pill"><?= $counts['FINALIZADA'] ?></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link bg-white border text-dark tab-filtro" href="#" data-estado="EXPIRADA">
+                        ❌ Expiradas <span class="badge bg-dark text-white ms-1 rounded-pill"><?= $counts['EXPIRADA'] ?></span>
                     </a>
                 </li>
             </ul>
@@ -138,21 +163,27 @@ $resultado = $conexion->query($sql);
                         <span class="badge bg-dark fs-6"><?= htmlspecialchars($fila['numeros_habitaciones'] ?? 'Sin Asignar') ?></span><br>
                         <small class="text-muted"><?= htmlspecialchars($fila['tipos_habitaciones'] ?? 'N/A') ?> (<?= $fila['total_habitaciones'] ?? 0 ?> habs)</small>
                     </td>
-                    <td><?= !empty($fila['fecha_ingreso']) ? date('d/m/Y', strtotime($fila['fecha_ingreso'])) : 'N/A' ?></td>
-                    <td><?= !empty($fila['fecha_salida']) ? date('d/m/Y', strtotime($fila['fecha_salida'])) : 'N/A' ?></td>
+                    <td>
+                        <?= !empty($fila['fecha_ingreso']) ? date('d/m/Y', strtotime($fila['fecha_ingreso'])) : 'N/A' ?>
+                        <?= $fila['estado'] == 'EXPIRADA' ? '<br><small class="text-danger" style="font-size: 0.65rem;">No consumado</small>' : '' ?>
+                    </td>
+                    <td>
+                        <?= !empty($fila['fecha_salida']) ? date('d/m/Y', strtotime($fila['fecha_salida'])) : 'N/A' ?>
+                        <?= $fila['estado'] == 'EXPIRADA' ? '<br><small class="text-danger" style="font-size: 0.65rem;">No consumado</small>' : '' ?>
+                    </td>
                     <td class="fw-bold text-success"><?= number_format((float)($fila['total'] ?? 0), 2) ?></td>
                     <td>
                       <?php 
                         $badge_class = 'bg-secondary';
                         $estado_mostrar = $fila['estado'];
-                        if($fila['estado'] == 'PENDIENTE') $badge_class = 'bg-primary';
-                        if($fila['estado'] == 'CONFIRMADA') { $badge_class = 'bg-warning text-dark'; $estado_mostrar = 'RESERVADA'; }
-                        if($fila['estado'] == 'HOSPEDADO') { $badge_class = 'bg-danger'; $estado_mostrar = 'OCUPADA'; }
+                        if($fila['estado'] == 'SOLICITADA') $badge_class = 'bg-primary';
+                        if($fila['estado'] == 'RESERVADA') $badge_class = 'bg-warning text-dark';
+                        if($fila['estado'] == 'OCUPADA') $badge_class = 'bg-danger';
                         if($fila['estado'] == 'FINALIZADA') $badge_class = 'bg-success';
-                        if($fila['estado'] == 'CANCELADA') $badge_class = 'bg-dark';
+                        if($fila['estado'] == 'EXPIRADA') $badge_class = 'bg-dark';
                       ?>
                       <span class="badge <?= $badge_class ?>"><?= $estado_mostrar ?></span>
-                      <?php if($fila['estado'] == 'CONFIRMADA' && !empty($fila['confirmada_at'])): ?>
+                      <?php if($fila['estado'] == 'RESERVADA' && !empty($fila['confirmada_at'])): ?>
                           <?php $expira = strtotime($fila['confirmada_at']) + (12 * 3600); ?>
                           <div class="text-danger fw-bold mt-1 countdown-timer" style="font-size: 0.75rem;" data-expire="<?= $expira ?>">
                               <i class="lni lni-timer"></i> <span>Calculando...</span>
@@ -160,12 +191,12 @@ $resultado = $conexion->query($sql);
                       <?php endif; ?>
                     </td>
                     <td class="text-center pe-4">
-                      <?php if ($fila['estado'] == 'PENDIENTE'): ?>
+                      <?php if ($fila['estado'] == 'SOLICITADA'): ?>
                           <!-- Botón Confirmar -->
                           <button type="button" class="btn btn-sm btn-success fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalConfirmar<?= $fila['id'] ?>">
                             <i class="lni lni-checkmark"></i> Confirmar
                           </button>
-                      <?php elseif ($fila['estado'] == 'CONFIRMADA'): ?>
+                      <?php elseif ($fila['estado'] == 'RESERVADA'): ?>
                           <div class="d-flex justify-content-center gap-1">
                               <!-- Botón Check-in -->
                               <button type="button" class="btn btn-sm btn-info fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalCheckin<?= $fila['id'] ?>">
@@ -192,8 +223,17 @@ $resultado = $conexion->query($sql);
                                   <a href="<?= $wa_url ?>" target="_blank" class="btn btn-sm btn-success fw-bold shadow-sm" title="Reenviar Confirmación por WhatsApp"><i class="lni lni-whatsapp"></i></a>
                               <?php endif; ?>
                           </div>
-                      <?php else: ?>
-                          <button class="btn btn-sm btn-light text-muted" disabled>Sin acciones</button>
+                      <?php elseif ($fila['estado'] == 'OCUPADA'): ?>
+                          <button type="button" class="btn btn-sm btn-warning fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalCheckout<?= $fila['id'] ?>">
+                            <i class="lni lni-exit"></i> Check-out
+                          </button>
+                      <?php elseif ($fila['estado'] == 'FINALIZADA'): ?>
+                          <form action="../reportes/comprobantes/CheckoutPdf.php" method="POST" target="_blank" style="display:inline;">
+                              <input type="hidden" name="id" value="<?= $fila['id'] ?>">
+                              <button type="submit" class="btn btn-sm btn-info fw-bold shadow-sm" title="Imprimir Comprobante"><i class="lni lni-printer"></i> Recibo</button>
+                          </form>
+                      <?php else: // EXPIRADA ?>
+                          <!-- Sin acciones para estos estados -->
                       <?php endif; ?>
                     </td>
                   </tr>
@@ -210,7 +250,7 @@ $resultado = $conexion->query($sql);
   <?php if ($resultado && $resultado->num_rows > 0): ?>
     <?php $resultado->data_seek(0); // Reiniciamos el puntero de base de datos ?>
     <?php while ($fila = $resultado->fetch_assoc()): ?>
-      <?php if ($fila['estado'] == 'PENDIENTE'): ?>
+      <?php if ($fila['estado'] == 'SOLICITADA'): ?>
       <!-- Modal de Confirmación y Pago -->
       <div class="modal fade" id="modalConfirmar<?= $fila['id'] ?>" tabindex="-1" aria-labelledby="modalConfirmarLabel<?= $fila['id'] ?>" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -285,7 +325,7 @@ $resultado = $conexion->query($sql);
             </div>
         </div>
       </div>
-      <?php elseif ($fila['estado'] == 'CONFIRMADA'): ?>
+      <?php elseif ($fila['estado'] == 'RESERVADA'): ?>
       <!-- Modal de Check-in y Cobro -->
       <div class="modal fade" id="modalCheckin<?= $fila['id'] ?>" tabindex="-1" aria-labelledby="modalCheckinLabel<?= $fila['id'] ?>" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -358,7 +398,7 @@ $resultado = $conexion->query($sql);
             </div>
         </div>
       </div>
-      <?php elseif ($fila['estado'] == 'HOSPEDADO'): ?>
+      <?php elseif ($fila['estado'] == 'OCUPADA'): ?>
       <!-- Modal de Check-out -->
       <div class="modal fade" id="modalCheckout<?= $fila['id'] ?>" tabindex="-1" aria-labelledby="modalCheckoutLabel<?= $fila['id'] ?>" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">

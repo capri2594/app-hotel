@@ -21,8 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conexion->begin_transaction();
 
         try {
-            // 1. Cambiar la reserva a CONFIRMADA, guardar edición de servicios y establecer fecha límite
-            $stmt_reserva = $conexion->prepare("UPDATE reservas SET estado = 'CONFIRMADA', confirmada_at = NOW(), desayuno = ?, garage = ?, total = ? WHERE id = ?");
+            // 1. Cambiar la reserva a RESERVADA, guardar edición de servicios y establecer fecha límite
+            $stmt_reserva = $conexion->prepare("UPDATE reservas SET estado = 'RESERVADA', confirmada_at = NOW(), desayuno = ?, garage = ?, total = ? WHERE id = ?");
             $stmt_reserva->bind_param("iidi", $desayuno, $garage, $total_pagar, $id_reserva);
             $stmt_reserva->execute();
 

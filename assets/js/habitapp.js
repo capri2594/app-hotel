@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if ($('#tablaReservas').length > 0) {
             var tablaReservas = $('#tablaReservas').DataTable({
                 "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
-                "order": [[ 0, "desc" ]], // Ordenar por ID descendente
+                "order": [], // Respetar el orden exacto y oficial enviado por PHP (SQL)
                 "columnDefs": [{ "orderable": false, "targets": 7 }],
                 "deferRender": true // Optimización extrema para manejar miles de filas sin lentitud
             });
