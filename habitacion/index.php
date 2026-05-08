@@ -14,8 +14,16 @@ header("Pragma: no-cache");
 
 include '../conexion.php'; 
 
-// LIMPIEZA AUTOMÁTICA: Cancelar reservas web solicitadas con más de 12 horas
-$conexion->query("UPDATE reservas SET estado = 'EXPIRADA' WHERE estado = 'SOLICITADA' AND created_at <= NOW() - INTERVAL 12 HOUR");
+// LIMPIEZA AUTOMÁTICA Y LIBERACIÓN DE HABITACIONES (Reservas > 12 horas sin consolidar)
+$sql_expiring = "SELECT id FROM reservas WHERE (estado = 'SOLICITADA' AND created_at <= NOW() - INTERVAL 12 HOUR) OR (estado = 'RESERVADA' AND confirmada_at <= NOW() - INTERVAL 12 HOUR)";
+$res_expiring = $conexion->query($sql_expiring);
+if ($res_expiring && $res_expiring->num_rows > 0) {
+    while($row = $res_expiring->fetch_assoc()) {
+        $id_res = $row['id'];
+        $conexion->query("UPDATE habitacion SET estado = 'DISPONIBLE' WHERE id_habitacion IN (SELECT habitacion_id FROM detalle_reserva WHERE reserva_id = $id_res)");
+        $conexion->query("UPDATE reservas SET estado = 'EXPIRADA' WHERE id = $id_res");
+    }
+}
 ?>
 <!DOCTYPE html>
 <html class="no-js" lang="zxx">

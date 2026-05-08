@@ -77,6 +77,44 @@ function actualizarCantidadServicio(id, precioServicio, noches, input) {
     calcularCambio(id);
 }
 
+function calcularCambioExt(id) {
+    let totalCobrar = parseFloat(document.getElementById('monto_cobrar_' + id).value) || 0;
+    let inputRecibido = document.getElementById('recibido_ext_' + id);
+    let inputCambio = document.getElementById('cambio_ext_' + id);
+    if (!inputCambio || !inputRecibido) return;
+    
+    let recibido = parseFloat(inputRecibido.value) || 0;
+    let cambio = recibido - totalCobrar;
+    if (cambio >= 0) {
+        inputCambio.value = cambio.toFixed(2);
+        inputCambio.classList.replace('text-danger', 'text-success');
+    } else {
+        inputCambio.value = '0.00';
+        inputCambio.classList.replace('text-success', 'text-danger');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Listener para calcular costo de extensión de estadía
+    document.querySelectorAll('.input-extender').forEach(function(input) {
+        input.addEventListener('change', function() {
+            let id = this.getAttribute('data-id');
+            let oldDate = new Date(this.getAttribute('data-old-date'));
+            let newDate = new Date(this.value);
+            let tarifaDiaria = parseFloat(document.getElementById('tarifa_diaria_' + id).value) || 0;
+            
+            let diffTime = Math.abs(newDate - oldDate);
+            let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            let montoCobrar = diffDays * tarifaDiaria;
+            
+            document.getElementById('monto_cobrar_' + id).value = montoCobrar.toFixed(2);
+            document.getElementById('display_extra_' + id).innerText = 'Bs. ' + montoCobrar.toFixed(2);
+            document.getElementById('recibido_ext_' + id).min = montoCobrar.toFixed(2);
+            calcularCambioExt(id);
+        });
+    });
+});
+
 /* =========================================
    Inicialización de Plugins (Global)
 ========================================= */
@@ -194,10 +232,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 5. Temporizador (Countdown) para Reservas Pendientes (12 horas)
     if (document.getElementById('tablaReservas')) {
         setInterval(function() {
-            const now = Math.floor(Date.now() / 1000);
             document.querySelectorAll('.countdown-timer').forEach(function(el) {
-                const expire = parseInt(el.getAttribute('data-expire'));
-                let diff = expire - now;
+                let diff = parseInt(el.getAttribute('data-remaining'));
                 
                 if (diff <= 0) {
                     el.innerHTML = '<i class="lni lni-timer"></i> Expirado';
@@ -212,6 +248,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     let span = el.querySelector('span');
                     if (span) span.innerText = h + ':' + m + ':' + s;
+                    
+                    el.setAttribute('data-remaining', diff - 1);
                 }
             });
         }, 1000);

@@ -47,8 +47,9 @@ $html = '
     <meta charset="UTF-8">
     <title>Proyección Operativa - ' . $dias_proyeccion . ' Días</title>
     <style>
+        @page { margin: 1cm 1.5cm 1.5cm 2cm; }
         body { font-family: "Helvetica", "Arial", sans-serif; font-size: 10pt; color: #333; margin: 0; }
-        .container { padding: 30px; }
+        .container { padding: 0; }
         .header { width: 100%; border-bottom: 2px solid #680202; padding-bottom: 10px; margin-bottom: 20px; }
         .company-details { text-align: center; line-height: 1.2; }
         .company-details h1 { margin: 0; color: #680202; font-size: 16pt; }
@@ -60,9 +61,19 @@ $html = '
         .badge-ocupada { background-color: #dc3545; }
         .badge-reservada { background-color: #ffc107; color: #000; }
         .text-center { text-align: center; }
+        #footer { position: fixed; bottom: -30px; left: 0px; right: 0px; font-size: 8pt; color: #777; border-top: 1px solid #ddd; padding-top: 5px; }
+        .page-number:after { content: counter(page); }
     </style>
 </head>
 <body>
+    <div id="footer">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td width="50%">Impreso el: ' . date('d/m/Y H:i:s') . ' - Generado por HabitApp</td>
+                <td width="50%" class="text-right">Página <span class="page-number"></span></td>
+            </tr>
+        </table>
+    </div>
     <div class="container">
         <table class="header" border="0" cellpadding="0" cellspacing="0">
             <tr>
@@ -119,7 +130,6 @@ if ($reservas->num_rows > 0) {
 
 $html .= '  </tbody>
         </table>
-        <p style="text-align: right; font-size: 8pt; color: #777;">Reporte generado automáticamente por HabitApp.</p>
     </div>
 </body>
 </html>';

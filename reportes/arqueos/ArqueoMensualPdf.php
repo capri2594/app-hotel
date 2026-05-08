@@ -12,7 +12,8 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 
 // Consultar pagos exactos de este mes
-$sql = "SELECT p.*, r.nombre as huesped 
+$sql = "SELECT p.*, r.nombre as huesped, r.fecha_ingreso, r.fecha_salida,
+        (SELECT GROUP_CONCAT(h.numero SEPARATOR ', ') FROM detalle_reserva dr JOIN habitacion h ON dr.habitacion_id = h.id_habitacion WHERE dr.reserva_id = r.id) as numeros_habitaciones
         FROM pagos p 
         LEFT JOIN reservas r ON p.reserva_id = r.id 
         WHERE DATE_FORMAT(p.fecha, '%Y-%m') = ? 
@@ -52,8 +53,9 @@ $html = '
     <meta charset="UTF-8">
     <title>Reporte de Ingresos Mensuales</title>
     <style>
+        @page { margin: 1cm 1.5cm 1.5cm 2cm; }
         body { font-family: "Helvetica", "Arial", sans-serif; font-size: 10pt; color: #333; margin: 0; }
-        .container { padding: 30px; }
+        .container { padding: 0; }
         .header { width: 100%; border-bottom: 2px solid #680202; padding-bottom: 10px; margin-bottom: 20px; }
         .company-details { text-align: center; line-height: 1.2; }
         .company-details h1 { margin: 0; color: #680202; font-size: 16pt; }
@@ -69,9 +71,19 @@ $html = '
         .signatures td { padding-top: 50px; border-top: 1px solid #333; width: 40%; }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
+        #footer { position: fixed; bottom: -30px; left: 0px; right: 0px; font-size: 8pt; color: #777; border-top: 1px solid #ddd; padding-top: 5px; }
+        .page-number:after { content: counter(page); }
     </style>
 </head>
 <body>
+    <div id="footer">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td width="50%">Impreso el: ' . date('d/m/Y H:i:s') . '</td>
+                <td width="50%" class="text-right">Página <span class="page-number"></span></td>
+            </tr>
+        </table>
+    </div>
     <div class="container">
         <table class="header" border="0" cellpadding="0" cellspacing="0">
             <tr>
@@ -105,7 +117,12 @@ $html = '
 
 if (count($lista_pagos) > 0) {
     foreach ($lista_pagos as $pago) {
-        $concepto = $pago['detalle'] ?? 'Abono de Estadía';
+        $concepto = $pago['detalle'] ?? '';
+        
+        // Formateo inteligente para estandarizar cobros de Check-in
+        if (empty($concepto) || (strpos(strtolower($concepto), 'pago de estad') !== false && strpos(strtolower($concepto), 'extens') === false)) {
+            $concepto = "Pago por estadía - Hab: " . ($pago['numeros_habitaciones'] ?? 'S/A') . " en Fecha: " . date('d/m/Y', strtotime($pago['fecha_ingreso'])) . " a " . date('d/m/Y', strtotime($pago['fecha_salida']));
+        }
         $html .= '<tr>
             <td>' . date('d/m/Y H:i', strtotime($pago['fecha'])) . '</td>
             <td>' . htmlspecialchars($pago['huesped'] ?? 'N/A') . '</td>

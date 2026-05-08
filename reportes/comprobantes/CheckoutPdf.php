@@ -83,8 +83,9 @@ $html = '
     <meta charset="UTF-8">
     <title>Comprobante de Estadía</title>
     <style>
+        @page { margin: 1cm 1.5cm 1.5cm 2cm; }
         body { font-family: "Helvetica", "Arial", sans-serif; font-size: 11pt; color: #333; margin: 0; padding: 0; }
-        .container { padding: 30px; }
+        .container { padding: 0; }
         .header { width: 100%; border-bottom: 2px solid #680202; padding-bottom: 15px; margin-bottom: 20px; }
         .company-details { text-align: center; line-height: 1.3; }
         .company-details h1 { margin: 0; color: #680202; font-size: 18pt; letter-spacing: 1px; }

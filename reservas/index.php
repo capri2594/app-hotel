@@ -12,10 +12,20 @@ include '../conexion.php';
 // PARCHE AUTOMÁTICO: Agregar columna confirmada_at si no existe
 $conexion->query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS confirmada_at TIMESTAMP NULL AFTER created_at");
 
-// LIMPIEZA AUTOMÁTICA: Cancelar reservas web solicitadas con más de 12 horas
-$conexion->query("UPDATE reservas SET estado = 'EXPIRADA' WHERE estado = 'SOLICITADA' AND created_at <= NOW() - INTERVAL 12 HOUR");
-// LIMPIEZA AUTOMÁTICA: Cancelar reservas confirmadas (Reservadas) que no hagan check-in en 12 horas
-$conexion->query("UPDATE reservas SET estado = 'EXPIRADA' WHERE estado = 'RESERVADA' AND confirmada_at <= NOW() - INTERVAL 12 HOUR");
+// LIMPIEZA AUTOMÁTICA Y LIBERACIÓN DE HABITACIONES (Reservas > 12 horas sin consolidar)
+$sql_expiring = "SELECT id FROM reservas WHERE 
+                 (estado = 'SOLICITADA' AND created_at <= NOW() - INTERVAL 12 HOUR) OR 
+                 (estado = 'RESERVADA' AND confirmada_at <= NOW() - INTERVAL 12 HOUR)";
+$res_expiring = $conexion->query($sql_expiring);
+if ($res_expiring && $res_expiring->num_rows > 0) {
+    while($row = $res_expiring->fetch_assoc()) {
+        $id_res = $row['id'];
+        // 1. Liberar las habitaciones asociadas (Volver a DISPONIBLE en el mapa)
+        $conexion->query("UPDATE habitacion SET estado = 'DISPONIBLE' WHERE id_habitacion IN (SELECT habitacion_id FROM detalle_reserva WHERE reserva_id = $id_res)");
+        // 2. Marcar la reserva como EXPIRADA
+        $conexion->query("UPDATE reservas SET estado = 'EXPIRADA' WHERE id = $id_res");
+    }
+}
 
 // Obtener conteos para las pestañas
 $sql_counts = "SELECT estado, COUNT(*) as total FROM reservas GROUP BY estado";
@@ -34,7 +44,9 @@ $sql = "SELECT r.*,
                GROUP_CONCAT(h.numero SEPARATOR ', ') as numeros_habitaciones,
                GROUP_CONCAT(DISTINCT t.nombre SEPARATOR ', ') as tipos_habitaciones,
                COUNT(dr.habitacion_id) as total_habitaciones,
-               COALESCE(SUM(t.capacidad), 1) as capacidad_total
+               COALESCE(SUM(t.capacidad), 1) as capacidad_total,
+               COALESCE(SUM(t.precio), 0) as tarifa_noche,
+               TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(r.confirmada_at, INTERVAL 12 HOUR)) as segundos_restantes
         FROM reservas r 
         LEFT JOIN detalle_reserva dr ON r.id = dr.reserva_id
         LEFT JOIN habitacion h ON dr.habitacion_id = h.id_habitacion
@@ -172,7 +184,7 @@ $resultado = $conexion->query($sql);
                         <?= $fila['estado'] == 'EXPIRADA' ? '<br><small class="text-danger" style="font-size: 0.65rem;">No consumado</small>' : '' ?>
                     </td>
                     <td class="fw-bold text-success"><?= number_format((float)($fila['total'] ?? 0), 2) ?></td>
-                    <td>
+                    <td data-search="<?= htmlspecialchars($fila['estado']) ?>">
                       <?php 
                         $badge_class = 'bg-secondary';
                         $estado_mostrar = $fila['estado'];
@@ -184,8 +196,8 @@ $resultado = $conexion->query($sql);
                       ?>
                       <span class="badge <?= $badge_class ?>"><?= $estado_mostrar ?></span>
                       <?php if($fila['estado'] == 'RESERVADA' && !empty($fila['confirmada_at'])): ?>
-                          <?php $expira = strtotime($fila['confirmada_at']) + (12 * 3600); ?>
-                          <div class="text-danger fw-bold mt-1 countdown-timer" style="font-size: 0.75rem;" data-expire="<?= $expira ?>">
+                          <?php $restantes = (int)$fila['segundos_restantes']; ?>
+                          <div class="text-danger fw-bold mt-1 countdown-timer" style="font-size: 0.75rem;" data-remaining="<?= $restantes ?>">
                               <i class="lni lni-timer"></i> <span>Calculando...</span>
                           </div>
                       <?php endif; ?>
@@ -224,9 +236,14 @@ $resultado = $conexion->query($sql);
                               <?php endif; ?>
                           </div>
                       <?php elseif ($fila['estado'] == 'OCUPADA'): ?>
-                          <button type="button" class="btn btn-sm btn-warning fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalCheckout<?= $fila['id'] ?>">
-                            <i class="lni lni-exit"></i> Check-out
-                          </button>
+                          <div class="d-flex justify-content-center gap-1">
+                              <button type="button" class="btn btn-sm btn-primary fw-bold shadow-sm" title="Extender Estadía" data-bs-toggle="modal" data-bs-target="#modalExtender<?= $fila['id'] ?>">
+                                <i class="lni lni-calendar"></i> Extender
+                              </button>
+                              <button type="button" class="btn btn-sm btn-warning fw-bold shadow-sm text-dark" title="Finalizar Estadía" data-bs-toggle="modal" data-bs-target="#modalCheckout<?= $fila['id'] ?>">
+                                <i class="lni lni-exit"></i> Check-out
+                              </button>
+                          </div>
                       <?php elseif ($fila['estado'] == 'FINALIZADA'): ?>
                           <form action="../reportes/comprobantes/CheckoutPdf.php" method="POST" target="_blank" style="display:inline;">
                               <input type="hidden" name="id" value="<?= $fila['id'] ?>">
@@ -447,6 +464,59 @@ $resultado = $conexion->query($sql);
             </div>
         </div>
       </div>
+
+      <!-- Modal Extender Estadía -->
+      <div class="modal fade" id="modalExtender<?= $fila['id'] ?>" tabindex="-1" aria-labelledby="modalExtenderLabel<?= $fila['id'] ?>" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold" id="modalExtenderLabel<?= $fila['id'] ?>"><i class="lni lni-calendar me-1"></i> Extender Estadía</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="extend.php" method="POST">
+                    <div class="modal-body p-4 text-start">
+                        <input type="hidden" name="id" value="<?= $fila['id'] ?>">
+                        <?php
+                           // Calcular tarifa diaria incluyendo extras (desayuno y garage)
+                           $capacidad_reserva = intval($fila['capacidad_total'] ?? 1);
+                           $costo_desayuno = $fila['desayuno'] ? (30 * $capacidad_reserva) : 0;
+                           $costo_garage = ($fila['garage'] ?? 0) * 20;
+                           $tarifa_diaria = $fila['tarifa_noche'] + $costo_desayuno + $costo_garage;
+                        ?>
+                        <input type="hidden" id="tarifa_diaria_<?= $fila['id'] ?>" value="<?= $tarifa_diaria ?>">
+                        
+                        <div class="alert alert-light border shadow-sm mb-4">
+                            <h6 class="fw-bold mb-1"><i class="lni lni-user me-1"></i> Huésped: <?= htmlspecialchars($fila['nombre']) ?></h6>
+                            <p class="mb-0 small text-muted">Habitaciones: <strong><?= htmlspecialchars($fila['numeros_habitaciones']) ?></strong></p>
+                            <hr class="my-2">
+                            <p class="mb-0 small">Check-out actual: <strong class="text-danger"><?= date('d/m/Y', strtotime($fila['fecha_salida'])) ?></strong></p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-secondary fw-bold small">Nueva Fecha de Salida</label>
+                            <input type="date" class="form-control bg-light input-extender" name="nueva_fecha_salida" data-id="<?= $fila['id'] ?>" data-old-date="<?= $fila['fecha_salida'] ?>" min="<?= date('Y-m-d', strtotime($fila['fecha_salida'] . ' +1 day')) ?>" required>
+                        </div>
+
+                        <div class="alert alert-info border-info text-center py-2 mb-3">
+                            <span class="d-block small text-muted mb-1">Monto a cobrar por las noches extra:</span>
+                            <strong class="fs-3 text-primary" id="display_extra_<?= $fila['id'] ?>">Bs. 0.00</strong>
+                            <input type="hidden" name="monto_cobrar" id="monto_cobrar_<?= $fila['id'] ?>" value="0">
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-12"><label class="form-label text-secondary small">Método de Pago</label><select class="form-select bg-light" name="tipo_pago"><option value="EFECTIVO" selected>💵 Efectivo</option><option value="QR">📱 Transferencia QR</option><option value="DEPOSITO">🏦 Depósito Bancario</option></select></div>
+                            <div class="col-6"><label class="form-label text-secondary small">Efectivo Recibido</label><input type="number" step="0.01" class="form-control text-success fw-bold" name="monto_recibido" id="recibido_ext_<?= $fila['id'] ?>" placeholder="0.00" oninput="calcularCambioExt(<?= $fila['id'] ?>)" required></div>
+                            <div class="col-6"><label class="form-label text-secondary small">Cambio a Devolver</label><input type="text" class="form-control bg-light text-success fw-bold" name="cambio" id="cambio_ext_<?= $fila['id'] ?>" value="0.00" readonly></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light mt-2">
+                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary fw-bold shadow-sm"><i class="lni lni-save me-1"></i> Cobrar y Extender</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      </div>
       <?php endif; ?>
     <?php endwhile; ?>
   <?php endif; ?>
@@ -458,7 +528,7 @@ $resultado = $conexion->query($sql);
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-  <script src="../assets/js/habitapp.js"></script>
+  <script src="../assets/js/habitapp.js?v=<?= time() ?>"></script>
 
   <!-- Auto-abrir modal desde el Mapa de Habitaciones -->
   <?php if (isset($_GET['open_modal']) && isset($_GET['id'])): ?>

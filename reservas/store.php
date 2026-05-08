@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // CONTROL DE SPAM: Solo para clientes web (El recepcionista sí puede registrar múltiples reservas al mismo CI)
-    if (!$is_admin) {
+    if ($origen !== 'mapa') {
         $sql_check_ci = "SELECT id FROM reservas WHERE ci = ? AND estado IN ('SOLICITADA', 'RESERVADA')";
         $stmt_check_ci = $conexion->prepare($sql_check_ci);
         $stmt_check_ci->bind_param("s", $ci);
@@ -129,7 +129,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $res_buscar = $stmt_buscar->get_result();
 
                     if ($res_buscar->num_rows < $cantidad) {
-                        throw new Exception("Lo sentimos, no hay suficientes habitaciones disponibles de los tipos solicitados para esas fechas.");
+                        $msg_extra = "Lo sentimos, no hay suficientes habitaciones disponibles de los tipos solicitados para esas fechas.";
+                        
+                        if ($origen !== 'mapa') { // Solo mostrar la hora de expiración al cliente web
+                            $sql_prox = "SELECT MIN(IF(estado = 'RESERVADA', DATE_ADD(confirmada_at, INTERVAL 12 HOUR), DATE_ADD(created_at, INTERVAL 12 HOUR))) as hora_liberacion FROM reservas WHERE estado IN ('SOLICITADA', 'RESERVADA')";
+                            $res_prox = $conexion->query($sql_prox);
+                            if ($res_prox && $res_prox->num_rows > 0) {
+                                $row_prox = $res_prox->fetch_assoc();
+                                if (!empty($row_prox['hora_liberacion'])) {
+                                    $hora = date('H:i', strtotime($row_prox['hora_liberacion']));
+                                    $msg_extra = "Lo sentimos, estamos al 100% de capacidad. Sin embargo, algunas reservas pendientes de pago podrían expirar hoy a las " . $hora . ". Te invitamos a reintentar tu reserva después de esa hora.";
+                                }
+                            }
+                        }
+                        throw new Exception($msg_extra);
                     }
                     
                     // Obtener el precio de este tipo de habitación

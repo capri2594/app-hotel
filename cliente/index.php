@@ -143,6 +143,6 @@ $res_tipos = $conexion->query($sql_tipos);
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   
   <!-- Script principal de la aplicación -->
-  <script src="../assets/js/habitapp.js"></script>
+  <script src="../assets/js/habitapp.js?v=<?= time() ?>"></script>
 </body>
 </html>
