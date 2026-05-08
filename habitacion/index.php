@@ -40,6 +40,16 @@ while($p = $res_pisos->fetch_assoc()) {
     $pisos[] = $p['piso'];
 }
 
+// Obtener los tipos de habitaciones disponibles para edición
+$sql_tipos = "SELECT * FROM tipo_habitacion ORDER BY id_tipo ASC";
+$res_tipos = $conexion->query($sql_tipos);
+$tipos_habitacion = [];
+if ($res_tipos) {
+    while($t = $res_tipos->fetch_assoc()) {
+        $tipos_habitacion[] = $t;
+    }
+}
+
 // Obtener métricas globales para la leyenda
 $sql_stats = "SELECT estado, COUNT(*) as total FROM habitacion GROUP BY estado";
 $res_stats = $conexion->query($sql_stats);
@@ -51,7 +61,7 @@ if ($res_stats) {
 }
 
 // Consulta para obtener TODAS las habitaciones + Nombre del huésped
-$sql = "SELECT h.id_habitacion, h.numero, h.piso, t.codigo, t.nombre, h.estado,
+$sql = "SELECT h.id_habitacion, h.numero, h.id_tipo, h.piso, t.codigo, t.nombre, h.estado,
                MAX(r.nombre) as huesped,
                MAX(r.id) as reserva_id
         FROM habitacion h 
@@ -93,9 +103,14 @@ $total_solicitadas = $res_solicitadas->fetch_assoc()['total'] ?? 0;
         <!-- Cabecera Principal -->
         <div class="d-flex justify-content-between align-items-center mb-4 mt-3">
             <h2 class="fw-bold text-dark mb-0"><i class="lni lni-map me-2"></i>Mapa de Habitaciones</h2>
-            <a href="../reservas/index.php" class="btn btn-outline-primary fw-bold shadow-sm">
-                <i class="lni lni-agenda"></i> Ir a Gestión de Reservas
-            </a>
+            <div class="d-flex gap-2">
+                <a href="history.php" class="btn btn-outline-secondary fw-bold shadow-sm">
+                    <i class="lni lni-timer"></i> Historial Mantenimiento
+                </a>
+                <a href="../reservas/index.php" class="btn btn-outline-primary fw-bold shadow-sm">
+                    <i class="lni lni-agenda"></i> Ir a Gestión de Reservas
+                </a>
+            </div>
         </div>
 
         <!-- Selector de Pisos (Pestañas de Bootstrap sin recargar la página) -->
@@ -179,13 +194,16 @@ $total_solicitadas = $res_solicitadas->fetch_assoc()['total'] ?? 0;
                                   echo $foquito;
                                   
                                   // Botón "Poner en Mantenimiento" (Engranaje)
-                                  if ($estado == 'DISPONIBLE') { echo '<form action="toggle_mantenimiento.php" method="POST" style="position: absolute; top: 5px; left: 5px; z-index: 20; margin: 0;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="mantenimiento"><button type="submit" class="btn btn-sm text-secondary border-0 p-1" title="Poner en Mantenimiento" onclick="return confirm(\'¿Poner la habitación '.$hab['numero'].' en mantenimiento?\');"><i class="lni lni-cog"></i></button></form>'; }
+                                  if ($estado == 'DISPONIBLE') { echo '<button type="button" class="btn btn-sm text-secondary border-0 p-1" style="position: absolute; top: 5px; left: 5px; z-index: 20; margin: 0;" title="Poner en Mantenimiento" data-bs-toggle="modal" data-bs-target="#modalMantenimientoStart'.$hab['id_habitacion'].'"><i class="lni lni-cog"></i></button>'; }
+                                  
+                                  // Botón "Editar Habitación" (Lápiz)
+                                  if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '<button type="button" class="btn btn-sm text-primary border-0 p-1" style="position: absolute; top: 5px; right: 5px; z-index: 20; margin: 0;" title="Editar Habitación" data-bs-toggle="modal" data-bs-target="#modalEditarHab'.$hab['id_habitacion'].'"><i class="lni lni-pencil-alt"></i></button>'; }
 
                                   // Botón Principal de la celda (Reservar o Habilitar)
                                   if ($estado == 'DISPONIBLE') {
                                       echo '<form action="create.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; 
                                   } elseif ($estado == 'MANTENIMIENTO') { 
-                                      echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
+                                      echo '<button type="button" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" data-bs-toggle="modal" data-bs-target="#modalMantenimientoEnd'.$hab['id_habitacion'].'">'; 
                                   } elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
                                       $link_url = "../reservas/index.php";
                                       if ($estado == 'RESERVADA' && !empty($hab['reserva_id'])) $link_url .= "?open_modal=checkin&id=" . $hab['reserva_id'];
@@ -199,7 +217,8 @@ $total_solicitadas = $res_solicitadas->fetch_assoc()['total'] ?? 0;
                                       $badge_huesped = '<div class="mt-1"><span class="badge bg-dark text-wrap shadow-sm" style="font-size:0.65rem; line-height:1.1;">'.$nombre_mostrar.'</span></div>';
                                   }
                                   echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br><span style="font-size:0.75rem;">'.htmlspecialchars($hab['nombre']).'</span>'.$badge_huesped.'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
-                                  if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '</button></form>'; }
+                                  if ($estado == 'DISPONIBLE') { echo '</button></form>'; }
+                                  elseif ($estado == 'MANTENIMIENTO') { echo '</button>'; }
                                   elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') { echo '</a>'; }
                                   echo '</td>';
                                 } else {
@@ -234,13 +253,16 @@ $total_solicitadas = $res_solicitadas->fetch_assoc()['total'] ?? 0;
                                   echo $foquito;
                                   
                                   // Botón "Poner en Mantenimiento" (Engranaje)
-                                  if ($estado == 'DISPONIBLE') { echo '<form action="toggle_mantenimiento.php" method="POST" style="position: absolute; top: 5px; left: 5px; z-index: 20; margin: 0;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="mantenimiento"><button type="submit" class="btn btn-sm text-secondary border-0 p-1" title="Poner en Mantenimiento" onclick="return confirm(\'¿Poner la habitación '.$hab['numero'].' en mantenimiento?\');"><i class="lni lni-cog"></i></button></form>'; }
+                                  if ($estado == 'DISPONIBLE') { echo '<button type="button" class="btn btn-sm text-secondary border-0 p-1" style="position: absolute; top: 5px; left: 5px; z-index: 20; margin: 0;" title="Poner en Mantenimiento" data-bs-toggle="modal" data-bs-target="#modalMantenimientoStart'.$hab['id_habitacion'].'"><i class="lni lni-cog"></i></button>'; }
+                                  
+                                  // Botón "Editar Habitación" (Lápiz)
+                                  if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '<button type="button" class="btn btn-sm text-primary border-0 p-1" style="position: absolute; top: 5px; right: 5px; z-index: 20; margin: 0;" title="Editar Habitación" data-bs-toggle="modal" data-bs-target="#modalEditarHab'.$hab['id_habitacion'].'"><i class="lni lni-pencil-alt"></i></button>'; }
 
                                   // Botón Principal de la celda (Reservar o Habilitar)
                                   if ($estado == 'DISPONIBLE') {
                                       echo '<form action="create.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; 
                                   } elseif ($estado == 'MANTENIMIENTO') { 
-                                      echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
+                                      echo '<button type="button" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" data-bs-toggle="modal" data-bs-target="#modalMantenimientoEnd'.$hab['id_habitacion'].'">'; 
                                   } elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
                                       $link_url = "../reservas/index.php";
                                       if ($estado == 'RESERVADA' && !empty($hab['reserva_id'])) $link_url .= "?open_modal=checkin&id=" . $hab['reserva_id'];
@@ -254,7 +276,8 @@ $total_solicitadas = $res_solicitadas->fetch_assoc()['total'] ?? 0;
                                       $badge_huesped = '<div class="mt-1"><span class="badge bg-dark text-wrap shadow-sm" style="font-size:0.65rem; line-height:1.1;">'.$nombre_mostrar.'</span></div>';
                                   }
                                   echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br><span style="font-size:0.75rem;">'.htmlspecialchars($hab['nombre']).'</span>'.$badge_huesped.'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
-                                  if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '</button></form>'; }
+                                  if ($estado == 'DISPONIBLE') { echo '</button></form>'; }
+                                  elseif ($estado == 'MANTENIMIENTO') { echo '</button>'; }
                                   elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') { echo '</a>'; }
                                   echo '</td>';
                                 } else {
@@ -283,13 +306,16 @@ $total_solicitadas = $res_solicitadas->fetch_assoc()['total'] ?? 0;
                                   echo $foquito;
                                   
                                   // Botón "Poner en Mantenimiento" (Engranaje)
-                                  if ($estado == 'DISPONIBLE') { echo '<form action="toggle_mantenimiento.php" method="POST" style="position: absolute; top: 5px; left: 5px; z-index: 20; margin: 0;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="mantenimiento"><button type="submit" class="btn btn-sm text-secondary border-0 p-1" title="Poner en Mantenimiento" onclick="return confirm(\'¿Poner la habitación '.$hab['numero'].' en mantenimiento?\');"><i class="lni lni-cog"></i></button></form>'; }
+                                  if ($estado == 'DISPONIBLE') { echo '<button type="button" class="btn btn-sm text-secondary border-0 p-1" style="position: absolute; top: 5px; left: 5px; z-index: 20; margin: 0;" title="Poner en Mantenimiento" data-bs-toggle="modal" data-bs-target="#modalMantenimientoStart'.$hab['id_habitacion'].'"><i class="lni lni-cog"></i></button>'; }
+                                  
+                                  // Botón "Editar Habitación" (Lápiz)
+                                  if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '<button type="button" class="btn btn-sm text-primary border-0 p-1" style="position: absolute; top: 5px; right: 5px; z-index: 20; margin: 0;" title="Editar Habitación" data-bs-toggle="modal" data-bs-target="#modalEditarHab'.$hab['id_habitacion'].'"><i class="lni lni-pencil-alt"></i></button>'; }
 
                                   // Botón Principal de la celda (Reservar o Habilitar)
                                   if ($estado == 'DISPONIBLE') {
                                       echo '<form action="create.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;">'; 
                                   } elseif ($estado == 'MANTENIMIENTO') { 
-                                      echo '<form action="toggle_mantenimiento.php" method="POST" style="margin:0; height:100%;"><input type="hidden" name="id_habitacion" value="'.$hab['id_habitacion'].'"><input type="hidden" name="accion" value="disponible"><button type="submit" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" onclick="return confirm(\'¿Habilitar la habitación '.$hab['numero'].' nuevamente?\');">'; 
+                                      echo '<button type="button" style="background:none; border:none; padding:0; margin:0; display:block; width:100%; height:100%; cursor:pointer; color:inherit; text-align:center;" title="Habilitar Habitación" data-bs-toggle="modal" data-bs-target="#modalMantenimientoEnd'.$hab['id_habitacion'].'">'; 
                                   } elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') {
                                       $link_url = "../reservas/index.php";
                                       if ($estado == 'RESERVADA' && !empty($hab['reserva_id'])) $link_url .= "?open_modal=checkin&id=" . $hab['reserva_id'];
@@ -303,7 +329,8 @@ $total_solicitadas = $res_solicitadas->fetch_assoc()['total'] ?? 0;
                                       $badge_huesped = '<div class="mt-1"><span class="badge bg-dark text-wrap shadow-sm" style="font-size:0.65rem; line-height:1.1;">'.$nombre_mostrar.'</span></div>';
                                   }
                                   echo '<div style="padding-bottom: 30px;"><strong>'.htmlspecialchars($hab['numero']).'</strong><br><span style="font-size:0.75rem;">'.htmlspecialchars($hab['nombre']).'</span>'.$badge_huesped.'</div><img src="../assets/images/'.$gif.'" alt="'.$estado.'" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px;">';
-                                  if ($estado == 'DISPONIBLE' || $estado == 'MANTENIMIENTO') { echo '</button></form>'; }
+                                  if ($estado == 'DISPONIBLE') { echo '</button></form>'; }
+                                  elseif ($estado == 'MANTENIMIENTO') { echo '</button>'; }
                                   elseif ($estado == 'OCUPADA' || $estado == 'RESERVADA') { echo '</a>'; }
                                   echo '</td>';
                                 } else {
@@ -319,6 +346,109 @@ $total_solicitadas = $res_solicitadas->fetch_assoc()['total'] ?? 0;
             <?php endforeach; ?>
         </div>
 </div>
+
+    <!-- Modales de Mantenimiento Generados Dinámicamente -->
+    <?php if ($resultado && $resultado->num_rows > 0): ?>
+        <?php $resultado->data_seek(0); ?>
+        <?php while ($fila = $resultado->fetch_assoc()): ?>
+            <?php if ($fila['estado'] == 'DISPONIBLE'): ?>
+                <!-- Modal Poner en Mantenimiento -->
+                <div class="modal fade" id="modalMantenimientoStart<?= $fila['id_habitacion'] ?>" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow-lg">
+                            <div class="modal-header bg-secondary text-white">
+                                <h5 class="modal-title fw-bold"><i class="lni lni-cog me-1"></i> Mantenimiento Hab. <?= $fila['numero'] ?></h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form action="maintenance.php" method="POST">
+                                <div class="modal-body p-4 text-start">
+                                    <input type="hidden" name="accion" value="start">
+                                    <input type="hidden" name="id_habitacion" value="<?= $fila['id_habitacion'] ?>">
+                                    <p class="text-muted small mb-3">La habitación cambiará su estado y no podrá ser reservada hasta ser habilitada nuevamente.</p>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-dark small">Motivo del Mantenimiento:</label>
+                                        <textarea class="form-control bg-light" name="motivo" rows="3" placeholder="Ej. Fuga de agua, pintura, cama en mal estado..." required></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light mt-0">
+                                    <button type="button" class="btn btn-light fw-bold text-secondary border" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-secondary fw-bold shadow-sm">Confirmar Bloqueo</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php elseif ($fila['estado'] == 'MANTENIMIENTO'): ?>
+                <!-- Modal Finalizar Mantenimiento -->
+                <div class="modal fade" id="modalMantenimientoEnd<?= $fila['id_habitacion'] ?>" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow-lg">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title fw-bold"><i class="lni lni-checkmark-circle me-1"></i> Habilitar Hab. <?= $fila['numero'] ?></h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form action="maintenance.php" method="POST">
+                                <div class="modal-body p-4 text-start">
+                                    <input type="hidden" name="accion" value="end">
+                                    <input type="hidden" name="id_habitacion" value="<?= $fila['id_habitacion'] ?>">
+                                    <p class="text-muted small mb-3">Registra los detalles de la resolución antes de liberar la habitación para su uso.</p>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-dark small">Detalles de la Resolución (Opcional):</label>
+                                        <textarea class="form-control bg-light" name="detalle_resolucion" rows="3" placeholder="Ej. Tubería reparada, limpieza profunda realizada..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light mt-0">
+                                    <button type="button" class="btn btn-light fw-bold text-secondary border" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-success fw-bold shadow-sm">Habilitar Habitación</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($fila['estado'] == 'DISPONIBLE' || $fila['estado'] == 'MANTENIMIENTO'): ?>
+                <!-- Modal Editar Habitación -->
+                <div class="modal fade" id="modalEditarHab<?= $fila['id_habitacion'] ?>" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow-lg">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title fw-bold"><i class="lni lni-pencil-alt me-1"></i> Editar Habitación <?= $fila['numero'] ?></h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form action="update.php" method="POST">
+                                <div class="modal-body p-4 text-start">
+                                    <input type="hidden" name="id_habitacion" value="<?= $fila['id_habitacion'] ?>">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold text-dark small">Número de Habitación:</label>
+                                            <input type="number" class="form-control bg-light" name="numero" value="<?= htmlspecialchars($fila['numero']) ?>" required>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label fw-bold text-dark small">Piso:</label>
+                                            <input type="number" class="form-control bg-light" name="piso" value="<?= htmlspecialchars($fila['piso']) ?>" required>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-dark small">Tipo de Habitación:</label>
+                                        <select class="form-select bg-light" name="id_tipo" required>
+                                            <?php foreach($tipos_habitacion as $tipo): ?>
+                                                <option value="<?= $tipo['id_tipo'] ?>" <?= ($tipo['id_tipo'] == $fila['id_tipo']) ? 'selected' : '' ?>><?= htmlspecialchars($tipo['nombre']) ?> (Cap: <?= $tipo['capacidad'] ?>)</option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light mt-0">
+                                    <button type="button" class="btn btn-light fw-bold text-secondary border" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary fw-bold shadow-sm">Guardar Cambios</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+        <?php endwhile; ?>
+    <?php endif; ?>
 
     <script src="../assets/js/bootstrap.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>

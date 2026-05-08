@@ -15,4 +15,10 @@
     <link rel="stylesheet" href="../assets/css/main.css" />
     <link rel="stylesheet" href="../assets/css/habitapp.css?v=<?= time() ?>" />
 
+    <!-- Anti-Back-Forward Cache -->
+    <script>
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) { window.location.reload(); }
+        });
+    </script>
 </head>

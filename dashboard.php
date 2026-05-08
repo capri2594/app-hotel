@@ -18,6 +18,51 @@ $stmt->bind_param("i", $_SESSION['usuario_id']);
 $stmt->execute();
 $user_data = $stmt->get_result()->fetch_assoc();
 $username_actual = $user_data['usuario'] ?? '';
+
+// ==========================================
+// CÁLCULOS ESTADÍSTICOS PARA EL DASHBOARD
+// ==========================================
+
+// 1. Ingresos de Hoy
+$sql_ingresos = "SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE DATE(fecha) = CURDATE()";
+$ingresos_hoy = $conexion->query($sql_ingresos)->fetch_assoc()['total'];
+
+// 2. Estadísticas de Habitaciones (Ocupación y Gráfico)
+$sql_habs = "SELECT estado, COUNT(*) as cantidad FROM habitacion GROUP BY estado";
+$res_habs = $conexion->query($sql_habs);
+$habs_stats = ['DISPONIBLE' => 0, 'OCUPADA' => 0, 'RESERVADA' => 0, 'MANTENIMIENTO' => 0];
+$total_habs = 0;
+while ($row = $res_habs->fetch_assoc()) {
+    $habs_stats[$row['estado']] = $row['cantidad'];
+    $total_habs += $row['cantidad'];
+}
+$ocupacion_pct = ($total_habs > 0) ? round(($habs_stats['OCUPADA'] / $total_habs) * 100) : 0;
+
+// 3. Llegadas (Check-ins Hoy) y Salidas (Check-outs Hoy)
+$llegadas_hoy = $conexion->query("SELECT COUNT(*) as total FROM reservas WHERE estado = 'RESERVADA' AND fecha_ingreso <= CURDATE()")->fetch_assoc()['total'];
+$salidas_hoy = $conexion->query("SELECT COUNT(*) as total FROM reservas WHERE estado = 'OCUPADA' AND fecha_salida = CURDATE()")->fetch_assoc()['total'];
+
+// + Nueva métrica: Reservas Solicitadas (Web)
+$solicitadas_web = $conexion->query("SELECT COUNT(*) as total FROM reservas WHERE estado = 'SOLICITADA'")->fetch_assoc()['total'];
+
+// 4. Gráfico: Evolución de Ingresos (Últimos 7 días)
+$res_graf_ingresos = $conexion->query("SELECT DATE(fecha) as fecha_dia, SUM(monto) as total_dia FROM pagos WHERE fecha >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(fecha) ORDER BY fecha_dia ASC");
+$labels_ingresos = []; $data_ingresos = [];
+for ($i = 6; $i >= 0; $i--) { // Rellenar 7 días (incluso si hay días con 0 ingresos)
+    $fecha_label = date('Y-m-d', strtotime("-$i days"));
+    $labels_ingresos[$fecha_label] = date('d/m', strtotime("-$i days"));
+    $data_ingresos[$fecha_label] = 0;
+}
+while ($row = $res_graf_ingresos->fetch_assoc()) {
+    $data_ingresos[$row['fecha_dia']] = $row['total_dia'];
+}
+
+// 5. Gráfico: Métodos de Pago (Mes Actual)
+$res_pagos = $conexion->query("SELECT tipo_pago, SUM(monto) as total FROM pagos WHERE MONTH(fecha) = MONTH(CURDATE()) AND YEAR(fecha) = YEAR(CURDATE()) GROUP BY tipo_pago");
+$pagos_stats = ['EFECTIVO' => 0, 'QR' => 0, 'DEPOSITO' => 0];
+while ($row = $res_pagos->fetch_assoc()) {
+    $pagos_stats[$row['tipo_pago']] = $row['total'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -30,6 +75,16 @@ $username_actual = $user_data['usuario'] ?? '';
     <!-- CSS de Bootstrap 5 -->
     <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/css/main.css" />
+    <!-- Estilos Adicionales para el Dashboard -->
+    <style>
+        .card-kpi { transition: all 0.3s ease; border-left: 4px solid transparent; }
+        .card-kpi:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; cursor: pointer; }
+        .border-left-success { border-left-color: #198754 !important; }
+        .border-left-primary { border-left-color: #0d6efd !important; }
+        .border-left-warning { border-left-color: #ffc107 !important; }
+        .border-left-danger { border-left-color: #dc3545 !important; }
+        .border-left-info { border-left-color: #0dcaf0 !important; }
+    </style>
 </head>
 <body class="bg-light d-flex flex-column vh-100 overflow-hidden">
   
@@ -58,6 +113,9 @@ $username_actual = $user_data['usuario'] ?? '';
           <?php if ($_SESSION['rol'] == 'SuperAdmin' || $_SESSION['rol'] == 'Administrador'): ?>
           <li class="nav-item">
             <a class="nav-link" id="nav-funcionarios" href="funcionario/index.php" target="content_frame" onclick="showIframe('nav-funcionarios')">👥 Funcionarios</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="nav-tipos" href="tipo_habitacion/index.php" target="content_frame" onclick="showIframe('nav-tipos')">🏷️ Tipos de Hab.</a>
           </li>
           <?php endif; ?> 
         </ul>
@@ -96,63 +154,94 @@ $username_actual = $user_data['usuario'] ?? '';
         <?php unset($_SESSION['error']); ?>
     <?php endif; ?>
 
-    <div class="row mb-4">
-      <div class="col-12">
-        <h2 class="fw-bold text-dark">Bienvenido al Panel de Control</h2>
-        <p class="text-muted">Selecciona un módulo para comenzar a administrar el hotel.</p>
-      </div>
+    <!-- NIVEL 1: Acciones Rápidas -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-0">Resumen Operativo</h3>
+            <p class="text-muted mb-0 small">Métricas en tiempo real al <?= date('d/m/Y') ?></p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="habitacion/index.php" target="content_frame" onclick="showIframe('nav-habitaciones')" class="btn btn-primary fw-bold shadow-sm">🏨 Mapa</a>
+            <a href="reservas/index.php" target="content_frame" onclick="showIframe('nav-reservas')" class="btn btn-success fw-bold shadow-sm">📅 Reservas</a>
+            <a href="reportes/reconciliation.php" target="content_frame" onclick="showIframe('nav-reportes')" class="btn btn-info fw-bold shadow-sm">📈 Arqueos</a>
+        </div>
     </div>
 
-    <div class="row g-4">
-      <!-- Tarjeta Habitaciones -->
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100 rounded-3">
-          <div class="card-body text-center p-4">
-            <div class="mb-3"><span class="badge bg-primary rounded-circle p-3 fs-3">🏨</span></div>
-            <h5 class="card-title fw-bold">Gestión de Habitaciones</h5>
-            <p class="card-text text-muted">Ver estado, disponibilidad en tiempo real y mapa de pisos.</p>
-            <a href="habitacion/index.php" target="content_frame" onclick="showIframe('nav-habitaciones')" class="btn btn-outline-primary mt-2 w-100 fw-bold">Ir a Habitaciones</a>
-          </div>
+    <!-- NIVEL 2: Tarjetas de Métricas (KPIs Clickables) -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl">
+            <div class="card card-kpi border-0 shadow-sm border-left-info h-100 p-3" onclick="showIframe('nav-reservas'); window.frames['content_frame'].location='reservas/index.php';">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div><p class="text-muted small mb-1 fw-bold text-uppercase">Solicitudes Web</p><h4 class="fw-bold text-info mb-0"><?= $solicitadas_web ?> Pendientes <?= $solicitadas_web > 0 ? '<span class="spinner-grow spinner-grow-sm text-info ms-1" style="animation-duration: 1.5s;" role="status"></span>' : '' ?></h4></div>
+                    <div class="bg-info bg-opacity-10 text-info p-3 rounded-circle"><i class="lni lni-alarm-clock fs-4"></i></div>
+                </div>
+            </div>
         </div>
-      </div>
+        <div class="col-12 col-md-6 col-xl">
+            <div class="card card-kpi border-0 shadow-sm border-left-success h-100 p-3" onclick="showIframe('nav-reportes'); window.frames['content_frame'].location='reportes/reconciliation.php';">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div><p class="text-muted small mb-1 fw-bold text-uppercase">Ingresos Hoy</p><h4 class="fw-bold text-success mb-0">Bs. <?= number_format($ingresos_hoy, 2) ?></h4></div>
+                    <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle"><i class="lni lni-coin fs-4"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl">
+            <div class="card card-kpi border-0 shadow-sm border-left-primary h-100 p-3" onclick="showIframe('nav-habitaciones'); window.frames['content_frame'].location='habitacion/index.php';">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div><p class="text-muted small mb-1 fw-bold text-uppercase">Ocupación Actual</p><h4 class="fw-bold text-primary mb-0"><?= $ocupacion_pct ?>%</h4></div>
+                    <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle"><i class="lni lni-stats-up fs-4"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl">
+            <div class="card card-kpi border-0 shadow-sm border-left-warning h-100 p-3" onclick="showIframe('nav-reservas'); window.frames['content_frame'].location='reservas/index.php';">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div><p class="text-muted small mb-1 fw-bold text-uppercase">Check-ins Pendientes</p><h4 class="fw-bold text-warning mb-0"><?= $llegadas_hoy ?> LLegadas</h4></div>
+                    <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle"><i class="lni lni-enter fs-4"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl">
+            <div class="card card-kpi border-0 shadow-sm border-left-danger h-100 p-3" onclick="showIframe('nav-reservas'); window.frames['content_frame'].location='reservas/index.php';">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div><p class="text-muted small mb-1 fw-bold text-uppercase">Salidas de Hoy</p><h4 class="fw-bold text-danger mb-0"><?= $salidas_hoy ?> Check-outs</h4></div>
+                    <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-circle"><i class="lni lni-exit fs-4"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-      <!-- Tarjeta Reservas -->
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100 rounded-3">
-          <div class="card-body text-center p-4">
-            <div class="mb-3"><span class="badge bg-success rounded-circle p-3 fs-3">📅</span></div>
-            <h5 class="card-title fw-bold">Gestión de Reservas</h5>
-            <p class="card-text text-muted">Aprobar solicitudes web, realizar Check-in y registrar pagos.</p>
-            <a href="reservas/index.php" target="content_frame" onclick="showIframe('nav-reservas')" class="btn btn-outline-success mt-2 w-100 fw-bold">Ir a Reservas</a>
-          </div>
+    <!-- NIVEL 3: Gráficos Estadísticos -->
+    <div class="row g-4 mb-4">
+        <!-- Gráfico Ancho: Ingresos 7 días -->
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-dark mb-4">Evolución de Ingresos (Últimos 7 Días)</h6>
+                    <canvas id="chartIngresos" height="80"></canvas>
+                </div>
+            </div>
         </div>
-      </div>
+        
+        <!-- Gráfico Mitad: Estado Físico -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 h-100">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-dark mb-4 text-center">Estado del Hotel (Habitaciones)</h6>
+                    <div style="height: 250px; display: flex; justify-content: center;"><canvas id="chartHabs"></canvas></div>
+                </div>
+            </div>
+        </div>
 
-      <!-- Tarjeta Reportes -->
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100 rounded-3">
-          <div class="card-body text-center p-4">
-            <div class="mb-3"><span class="badge bg-info rounded-circle p-3 fs-3 text-dark">📈</span></div>
-            <h5 class="card-title fw-bold">Reportes y Arqueos</h5>
-            <p class="card-text text-muted">Conciliación de caja diaria, reportes mensuales y proyecciones.</p>
-            <a href="reportes/reconciliation.php" target="content_frame" onclick="showIframe('nav-reportes')" class="btn btn-outline-info mt-2 w-100 text-dark fw-bold">Ir a Reportes</a>
-          </div>
+        <!-- Gráfico Mitad: Métodos de Pago -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 h-100">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-dark mb-4 text-center">Preferencia de Pago (Este Mes)</h6>
+                    <div style="height: 250px; display: flex; justify-content: center;"><canvas id="chartPagos"></canvas></div>
+                </div>
+            </div>
         </div>
-      </div>
-
-      <!-- Tarjeta Funcionarios (Restringido por Rol) -->
-      <?php if ($_SESSION['rol'] == 'SuperAdmin' || $_SESSION['rol'] == 'Administrador'): ?>
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100 rounded-3">
-          <div class="card-body text-center p-4">
-            <div class="mb-3"><span class="badge bg-warning rounded-circle p-3 fs-3 text-dark">👥</span></div>
-            <h5 class="card-title fw-bold">Personal del Hotel</h5>
-            <p class="card-text text-muted">Administrar, registrar o dar de baja a los funcionarios y recepcionistas.</p>
-            <a href="funcionario/index.php" target="content_frame" onclick="showIframe('nav-funcionarios')" class="btn btn-outline-warning mt-2 w-100 text-dark fw-bold">Ir a Funcionarios</a>
-          </div>
-        </div>
-      </div>
-      <?php endif; ?>
     </div>
   </div>
 
@@ -220,5 +309,70 @@ $username_actual = $user_data['usuario'] ?? '';
 
   <!-- Script para alternar vistas sin recargar la página -->
   <script src="assets/js/habitapp.js"></script>
+  <!-- Librería Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script>
+    // Anti-Back-Forward Cache
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) { window.location.reload(); }
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Configuración Global Chart.js
+        Chart.defaults.font.family = "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
+        
+        // 1. Gráfico de Ingresos (Líneas)
+        const ctxIngresos = document.getElementById('chartIngresos').getContext('2d');
+        new Chart(ctxIngresos, {
+            type: 'line',
+            data: {
+                labels: <?= json_encode(array_values($labels_ingresos)) ?>,
+                datasets: [{
+                    label: 'Ingresos (Bs.)',
+                    data: <?= json_encode(array_values($data_ingresos)) ?>,
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#198754',
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        // 2. Gráfico Estado Habitaciones (Anillo)
+        const ctxHabs = document.getElementById('chartHabs').getContext('2d');
+        new Chart(ctxHabs, {
+            type: 'doughnut',
+            data: {
+                labels: ['Disponibles', 'Ocupadas', 'Reservadas', 'Mantenimiento'],
+                datasets: [{
+                    data: <?= json_encode([$habs_stats['DISPONIBLE'], $habs_stats['OCUPADA'], $habs_stats['RESERVADA'], $habs_stats['MANTENIMIENTO']]) ?>,
+                    backgroundColor: ['#198754', '#dc3545', '#ffc107', '#6c757d'],
+                    borderWidth: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '70%' }
+        });
+
+        // 3. Gráfico Métodos de Pago (Pastel)
+        const ctxPagos = document.getElementById('chartPagos').getContext('2d');
+        new Chart(ctxPagos, {
+            type: 'pie',
+            data: {
+                labels: ['Efectivo', 'Transferencia QR', 'Depósito Bancario'],
+                datasets: [{
+                    data: <?= json_encode([$pagos_stats['EFECTIVO'], $pagos_stats['QR'], $pagos_stats['DEPOSITO']]) ?>,
+                    backgroundColor: ['#0d6efd', '#6f42c1', '#fd7e14'],
+                    borderWidth: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    });
+  </script>
 </body>
 </html>

@@ -136,7 +136,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
                 "order": [], // Respetar el orden exacto y oficial enviado por PHP (SQL)
                 "columnDefs": [{ "orderable": false, "targets": 7 }],
-                "deferRender": true // Optimización extrema para manejar miles de filas sin lentitud
+                "deferRender": true, // Optimización extrema para manejar miles de filas sin lentitud
+                "dom": "<'row mb-3'<'col-md-6 d-flex align-items-center'B><'col-md-6'f>>" +
+                       "<'row'<'col-sm-12'tr>>" +
+                       "<'row mt-3'<'col-md-5'i><'col-md-7'p>>",
+                "buttons": [{
+                    extend: 'excelHtml5',
+                    text: '<i class="lni lni-empty-file"></i> Exportar a Excel',
+                    className: 'btn btn-success btn-sm fw-bold shadow-sm',
+                    title: 'Reporte_Reservas_HabitApp',
+                    exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6] } // Excluye la columna 7 (Acciones)
+                }]
             });
 
             // Funcionalidad de Pestañas Interactivas (Sin recargar la página)

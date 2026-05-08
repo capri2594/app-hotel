@@ -7,6 +7,11 @@ if (!isset($_SESSION['usuario_id'])) {
     exit;
 }
 
+// Evitar que el navegador guarde caché (Protege el botón Atrás tras el Logout)
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
 include '../conexion.php';
 
 // PARCHE AUTOMÁTICO: Agregar columna confirmada_at si no existe
@@ -62,6 +67,8 @@ $resultado = $conexion->query($sql);
 
 <!-- CSS de DataTables para Bootstrap 5 -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+<!-- CSS para Botones de DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css" />
 
 <body class="bg-light py-4">
   <div class="container">
@@ -318,10 +325,10 @@ $resultado = $conexion->query($sql);
                                       $costo_desayuno = 30 * $capacidad_reserva;
                                     ?>
                                     <input class="form-check-input" type="checkbox" name="desayuno" value="1" <?= $fila['desayuno'] ? 'checked' : '' ?> onchange="toggleServicio(<?= $fila['id'] ?>, <?= $costo_desayuno ?>, <?= $noches_calculadas ?>, this)">
-                                    <label class="form-check-label text-secondary small fw-bold">☕ Desayuno (+Bs. <?= $costo_desayuno ?>/noche)</label>
+                                <label class="form-check-label text-secondary small fw-bold">☕ Desayuno (+Bs. <?= $costo_desayuno ?>/noche para <?= $capacidad_reserva ?> pers.)</label>
                                 </div>
                                 <div class="d-flex align-items-center">
-                                    <label class="form-label text-secondary small fw-bold mb-0 me-2">🚗 Garages (+Bs. 20/noche)</label>
+                                <label class="form-label text-secondary small fw-bold mb-0 me-2">🚗 Garages (+Bs. 20/auto por noche)</label>
                                     <input type="number" class="form-control form-control-sm text-center border-secondary" name="garage" id="garage_<?= $fila['id'] ?>" value="<?= $fila['garage'] ?? 0 ?>" min="0" max="10" style="width: 70px;" data-old-value="<?= $fila['garage'] ?? 0 ?>" onchange="actualizarCantidadServicio(<?= $fila['id'] ?>, 20, <?= $noches_calculadas ?>, this)">
                                 </div>
                             </div>
@@ -379,10 +386,10 @@ $resultado = $conexion->query($sql);
                                       $costo_desayuno = 30 * $capacidad_reserva;
                                     ?>
                                     <input class="form-check-input" type="checkbox" name="desayuno" value="1" <?= $fila['desayuno'] ? 'checked' : '' ?> onchange="toggleServicio(<?= $fila['id'] ?>, <?= $costo_desayuno ?>, <?= $noches_calculadas ?>, this)">
-                                    <label class="form-check-label text-secondary small fw-bold">☕ Desayuno (+Bs. <?= $costo_desayuno ?>/noche)</label>
+                                <label class="form-check-label text-secondary small fw-bold">☕ Desayuno (+Bs. <?= $costo_desayuno ?>/noche para <?= $capacidad_reserva ?> pers.)</label>
                                 </div>
                                 <div class="d-flex align-items-center mt-2">
-                                    <label class="form-label text-secondary small fw-bold mb-0 me-2">🚗 Garages (+Bs. 20/noche)</label>
+                                <label class="form-label text-secondary small fw-bold mb-0 me-2">🚗 Garages (+Bs. 20/auto por noche)</label>
                                     <input type="number" class="form-control form-control-sm text-center border-secondary" name="garage" id="garage_<?= $fila['id'] ?>" value="<?= $fila['garage'] ?? 0 ?>" min="0" max="10" style="width: 70px;" data-old-value="<?= $fila['garage'] ?? 0 ?>" onchange="actualizarCantidadServicio(<?= $fila['id'] ?>, 20, <?= $noches_calculadas ?>, this)">
                                 </div>
                             </div>
@@ -528,6 +535,13 @@ $resultado = $conexion->query($sql);
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+  
+  <!-- Librerías para Exportar a Excel -->
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+
   <script src="../assets/js/habitapp.js?v=<?= time() ?>"></script>
 
   <!-- Auto-abrir modal desde el Mapa de Habitaciones -->
