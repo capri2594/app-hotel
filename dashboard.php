@@ -84,60 +84,119 @@ while ($row = $res_pagos->fetch_assoc()) {
         .border-left-warning { border-left-color: #ffc107 !important; }
         .border-left-danger { border-left-color: #dc3545 !important; }
         .border-left-info { border-left-color: #0dcaf0 !important; }
+
+        /* Estilos del Sidebar */
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.7) !important;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .sidebar .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            color: #fff !important;
+        }
+        .sidebar .nav-link.active {
+            background-color: #680202 !important;
+            color: #fff !important;
+            box-shadow: 0 4px 10px rgba(104, 2, 2, 0.3);
+        }
+        .sidebar-body::-webkit-scrollbar {
+            width: 5px;
+        }
+        .sidebar-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
     </style>
 </head>
-<body class="bg-light d-flex flex-column vh-100 overflow-hidden">
-  
-  <!-- Barra de Navegación del Dashboard -->
-  <nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background-color: #680202;">
-    <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="#" onclick="showDashboardHome()">HabitApp Admin</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="adminNavbar">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item">
-            <a class="nav-link active" id="nav-dashboard" href="#" onclick="showDashboardHome()">📊 Dashboard</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" id="nav-habitaciones" href="habitacion/index.php" target="content_frame" onclick="showIframe('nav-habitaciones')">🏨 Habitaciones</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" id="nav-reservas" href="reservas/index.php" target="content_frame" onclick="showIframe('nav-reservas')">📅 Reservas</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" id="nav-reportes" href="reportes/reconciliation.php" target="content_frame" onclick="showIframe('nav-reportes')">📈 Reportes</a>
-          </li>
-          <!-- Restricción visual de acuerdo al rol -->
-          <?php if ($_SESSION['rol'] == 'SuperAdmin' || $_SESSION['rol'] == 'Administrador'): ?>
-          <li class="nav-item">
-            <a class="nav-link" id="nav-funcionarios" href="funcionario/index.php" target="content_frame" onclick="showIframe('nav-funcionarios')">👥 Funcionarios</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" id="nav-tipos" href="tipo_habitacion/index.php" target="content_frame" onclick="showIframe('nav-tipos')">🏷️ Tipos de Hab.</a>
-          </li>
-          <?php endif; ?> 
-        </ul>
-        <div class="dropdown">
-          <a class="btn btn-outline-light dropdown-toggle fw-bold" href="#" role="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
-            👤 Hola, <?= htmlspecialchars($_SESSION['nombre_completo']) ?>
+<body class="bg-light d-flex vh-100 overflow-hidden">
+
+  <!-- Menú Lateral (Sidebar) -->
+  <aside class="sidebar d-flex flex-column flex-shrink-0 text-white bg-dark shadow" style="width: 250px; height: 100vh; background-color: #1a0000 !important; border-right: 1px solid rgba(255,255,255,0.08); z-index: 1000;">
+    <div class="sidebar-header p-4 border-bottom border-secondary border-opacity-25 text-center">
+      <h4 class="fw-bold mb-0 text-white d-flex align-items-center justify-content-center gap-2" style="font-size: 1.25rem;">
+        <i class="lni lni-apartment text-danger"></i> HabitApp Admin
+      </h4>
+    </div>
+    <div class="sidebar-body flex-grow-1 overflow-y-auto py-3">
+      <ul class="nav nav-pills flex-column mb-auto px-3 gap-1">
+        <li class="nav-item">
+          <a class="nav-link text-white active d-flex align-items-center gap-2 py-2 px-3 rounded-3" id="nav-dashboard" href="#" onclick="showDashboardHome()">
+            <span class="fs-5">📊</span> Dashboard
           </a>
-          <ul class="dropdown-menu dropdown-menu-end shadow mt-2" aria-labelledby="userMenu">
-            <li><h6 class="dropdown-header text-dark fw-bold">Rol: <?= htmlspecialchars($_SESSION['rol']) ?></h6></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalUsuario">⚙️ Cambiar Usuario</a></li>
-            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalPassword">🔒 Cambiar Contraseña</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger fw-bold" href="logout.php">🚪 Cerrar Sesión</a></li>
-          </ul>
-        </div>
+        </li>
+        
+        <li class="sidebar-category mt-4 mb-2 text-uppercase fs-7 text-muted fw-bold px-3" style="letter-spacing: 1px; font-size: 0.75rem;">Operaciones</li>
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded-3" id="nav-habitaciones" href="habitacion/index.php" target="content_frame" onclick="showIframe('nav-habitaciones')">
+            <span class="fs-5">🏨</span> Habitaciones
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded-3" id="nav-reservas" href="reservas/index.php" target="content_frame" onclick="showIframe('nav-reservas')">
+            <span class="fs-5">📅</span> Reservas
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded-3" id="nav-reportes" href="reportes/reconciliation.php" target="content_frame" onclick="showIframe('nav-reportes')">
+            <span class="fs-5">📈</span> Reportes
+          </a>
+        </li>
+        
+        <?php if ($_SESSION['rol'] == 'SuperAdmin' || $_SESSION['rol'] == 'Administrador'): ?>
+        <li class="sidebar-category mt-4 mb-2 text-uppercase fs-7 text-muted fw-bold px-3" style="letter-spacing: 1px; font-size: 0.75rem;">Administración</li>
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded-3" id="nav-funcionarios" href="funcionario/index.php" target="content_frame" onclick="showIframe('nav-funcionarios')">
+            <span class="fs-5">👥</span> Funcionarios
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded-3" id="nav-tipos" href="tipo_habitacion/index.php" target="content_frame" onclick="showIframe('nav-tipos')">
+            <span class="fs-5">🏷️</span> Tipos de Hab.
+          </a>
+        </li>
+        <?php endif; ?>
+      </ul>
+    </div>
+    
+    <div class="sidebar-footer p-3 border-top border-secondary border-opacity-25 bg-black bg-opacity-25">
+      <div class="dropdown">
+        <a class="btn btn-outline-light w-100 dropdown-toggle fw-bold d-flex align-items-center justify-content-between px-3 py-2" href="#" role="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="text-truncate me-1">👤 <?= htmlspecialchars($_SESSION['nombre_completo']) ?></span>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-dark shadow w-100" aria-labelledby="userMenu">
+          <li><h6 class="dropdown-header text-muted fw-bold" style="font-size: 0.75rem;">Rol: <?= htmlspecialchars($_SESSION['rol']) ?></h6></li>
+          <li><hr class="dropdown-divider border-secondary"></li>
+          <li><a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#modalUsuario"><i class="lni lni-user me-2"></i> Cambiar Usuario</a></li>
+          <li><a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#modalPassword"><i class="lni lni-lock me-2"></i> Cambiar Contraseña</a></li>
+          <li><hr class="dropdown-divider border-secondary"></li>
+          <li><a class="dropdown-item text-danger fw-bold py-2" href="logout.php"><i class="lni lni-exit me-2"></i> Cerrar Sesión</a></li>
+        </ul>
       </div>
     </div>
-  </nav>
+  </aside>
+
+  <!-- Contenedor Principal (Derecha) -->
+  <main class="d-flex flex-column flex-grow-1 h-100 overflow-hidden">
+    
+    <!-- Barra Superior (Top Bar) -->
+    <header class="navbar navbar-light bg-white border-bottom shadow-sm px-4 py-2.5 d-flex align-items-center justify-content-between flex-shrink-0" style="height: 60px;">
+      <div>
+        <h5 class="fw-bold text-dark mb-0" id="current-section-title">📊 Resumen General</h5>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <!-- Botón rápido para copiar link de reservas -->
+        <button class="btn btn-outline-danger btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm py-1.5 px-3" onclick="copiarEnlaceReservas(this)">
+          <i class="lni lni-link"></i> <span>Copiar Link de Reservas</span>
+        </button>
+        <div class="text-muted d-none d-md-block" style="font-size: 0.85rem;">
+          <i class="lni lni-calendar me-1"></i><?= date('d/m/Y') ?>
+        </div>
+      </div>
+    </header>
 
   <!-- Vista de Tarjetas (Inicio) -->
-  <div id="dashboard-home" class="container pt-4 pb-4 flex-grow-1 overflow-auto">
+  <div id="dashboard-home" class="container-fluid pt-4 pb-4 px-4 flex-grow-1 overflow-auto">
     <!-- Alertas Flash de éxito o error -->
     <?php if (isset($_SESSION['msg'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -250,6 +309,8 @@ while ($row = $res_pagos->fetch_assoc()) {
     <iframe name="content_frame" id="content_frame" class="w-100 h-100" style="border: none;"></iframe>
   </div>
 
+  </main>
+
   <!-- JS de Bootstrap -->
   <script src="assets/js/bootstrap.min.js"></script>
   
@@ -307,6 +368,31 @@ while ($row = $res_pagos->fetch_assoc()) {
     </div>
   </div>
 
+  <script>
+    function copiarEnlaceReservas(btn) {
+        // Calcular el enlace de la carpeta /cliente/ de forma dinámica
+        let path = window.location.pathname;
+        let dir = path.substring(0, path.lastIndexOf('/'));
+        let url = window.location.origin + dir + '/cliente/';
+
+        // Intentar copiar al portapapeles
+        navigator.clipboard.writeText(url).then(function() {
+            let origText = btn.innerHTML;
+            btn.innerHTML = '<i class="lni lni-checkmark"></i> <span>¡Copiado!</span>';
+            btn.classList.remove('btn-outline-danger', 'btn-outline-light');
+            btn.classList.add('btn-success');
+            
+            setTimeout(function() {
+                btn.innerHTML = origText;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-danger');
+            }, 2500);
+        }).catch(function(err) {
+            console.error('Error al copiar el enlace: ', err);
+            alert('No se pudo copiar el enlace de manera automática. URL: ' + url);
+        });
+    }
+  </script>
   <!-- Script para alternar vistas sin recargar la página -->
   <script src="assets/js/habitapp.js"></script>
   <!-- Librería Chart.js -->

@@ -1,250 +1,285 @@
 <?php
 session_start();
 
-// Validar si el usuario está logueado y tiene rol gerencial
-if (!isset($_SESSION['usuario_id']) || !in_array($_SESSION['rol'], ['SuperAdmin', 'Administrador'])) {
-    header("Location: ../index.php");
+// Si ya está logueado, redirigir al Dashboard de inmediato
+if (isset($_SESSION['usuario_id'])) {
+    header("Location: dashboard.php");
     exit;
 }
 
-// Evitar que el navegador guarde caché
-header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-
-include '../conexion.php';
-
-// Obtener los tipos de habitación y contar cuartos físicos asignados
-$sql = "SELECT t.*, (SELECT COUNT(*) FROM habitacion h WHERE h.id_tipo = t.id_tipo) as total_habitaciones 
-        FROM tipo_habitacion t ORDER BY t.id_tipo ASC";
-$resultado = $conexion->query($sql);
+// Capturar error si existe
+$error_msg = "";
+if (isset($_SESSION['error'])) {
+    $error_msg = $_SESSION['error'];
+    unset($_SESSION['error']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
-
-<?php include '../header.php'; ?>
-
-<!-- CSS de DataTables para Bootstrap 5 -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
-<!-- CSS para Botones de DataTables -->
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css" />
-
-<body class="bg-light py-4">
-  <div class="container">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Iniciar Sesión - HabitApp</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="shortcut icon" type="image/x-icon" href="assets/images/favicon.ico" />
     
-    <!-- Alertas Flash -->
-    <?php if (isset($_GET['msg'])): ?>
-        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
-            <i class="lni lni-checkmark-circle me-1"></i> <?= htmlspecialchars($_GET['msg']) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <?php endif; ?>
-    <?php if (isset($_GET['error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
-            <i class="lni lni-warning me-1"></i> <?= htmlspecialchars($_GET['error']) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <?php endif; ?>
+    <!-- Bootstrap 5 -->
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <!-- LineIcons 2.0 -->
+    <link rel="stylesheet" href="assets/css/LineIcons.2.0.css" />
+    <!-- Google Fonts - Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="fw-bold text-dark"><i class="lni lni-tag me-2"></i>Tipos de Habitación</h2>
-      <button class="btn btn-primary fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCrearTipo">
-        <i class="lni lni-circle-plus"></i> Nuevo Tipo
-      </button>
-    </div>
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #2b0000 0%, #680202 50%, #1a0000 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
 
-    <div class="card shadow-sm border-0 rounded-3">
-      <div class="card-body p-4">
-        <div class="table-responsive">
-          <table id="tablaTipos" class="table table-hover align-middle mb-0" style="width: 100%;">
-            <thead class="table-light text-secondary">
-              <tr>
-                <th class="ps-4">Código</th>
-                <th>Nombre del Tipo</th>
-                <th class="text-center">Capacidad</th>
-                <th class="text-end">Precio Base (Bs.)</th>
-                <th class="text-center">Habs. Asignadas</th>
-                <th class="text-center pe-4">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php if ($resultado && $resultado->num_rows > 0): ?>
-                <?php while ($fila = $resultado->fetch_assoc()): ?>
-                  <tr>
-                    <td class="ps-4 fw-bold text-primary"><?= htmlspecialchars($fila['codigo']) ?></td>
-                    <td class="fw-bold text-dark"><?= htmlspecialchars($fila['nombre']) ?></td>
-                    <td class="text-center">
-                        <span class="badge bg-secondary"><i class="lni lni-users me-1"></i><?= htmlspecialchars($fila['capacidad']) ?> Pax</span>
-                    </td>
-                    <td class="text-end fw-bold text-success">Bs. <?= number_format($fila['precio'], 2) ?></td>
-                    <td class="text-center">
-                        <span class="badge <?= $fila['total_habitaciones'] > 0 ? 'bg-info text-dark' : 'bg-light text-secondary border' ?>"><?= $fila['total_habitaciones'] ?> cuartos</span>
-                    </td>
-                    <td class="text-center pe-4">
-                      <button type="button" class="btn btn-sm btn-warning fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalEditarTipo<?= $fila['id_tipo'] ?>">
-                        <i class="lni lni-pencil"></i> Editar
-                      </button>
-                      <button type="button" class="btn btn-sm btn-danger fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalEliminarTipo<?= $fila['id_tipo'] ?>">
-                        <i class="lni lni-trash"></i> Eliminar
-                      </button>
-                    </td>
-                  </tr>
+        /* Efecto de orbes decorativos en el fondo */
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 1;
+            opacity: 0.3;
+        }
+        .orb-1 {
+            top: 10%;
+            left: 15%;
+            width: 300px;
+            height: 300px;
+            background: #ff3e3e;
+        }
+        .orb-2 {
+            bottom: 10%;
+            right: 15%;
+            width: 350px;
+            height: 350px;
+            background: #ff8c00;
+        }
 
-                  <!-- Modal Editar Tipo -->
-                  <div class="modal fade" id="modalEditarTipo<?= $fila['id_tipo'] ?>" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 shadow-lg">
-                            <div class="modal-header bg-warning text-dark">
-                                <h5 class="modal-title fw-bold"><i class="lni lni-pencil-alt me-1"></i> Editar Tipo de Habitación</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <form action="update.php" method="POST">
-                                <div class="modal-body p-4 text-start">
-                                    <input type="hidden" name="id_tipo" value="<?= $fila['id_tipo'] ?>">
-                                    <div class="row">
-                                        <div class="col-md-4 mb-3">
-                                            <label class="form-label fw-bold text-dark small">Código</label>
-                                            <input type="text" class="form-control bg-light text-uppercase" name="codigo" value="<?= htmlspecialchars($fila['codigo']) ?>" maxlength="5" required>
-                                        </div>
-                                        <div class="col-md-8 mb-3">
-                                            <label class="form-label fw-bold text-dark small">Nombre</label>
-                                            <input type="text" class="form-control bg-light" name="nombre" value="<?= htmlspecialchars($fila['nombre']) ?>" required>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label fw-bold text-dark small">Capacidad (Personas)</label>
-                                            <input type="number" class="form-control bg-light" name="capacidad" min="1" max="20" value="<?= htmlspecialchars($fila['capacidad']) ?>" required>
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label class="form-label fw-bold text-dark small">Precio Base (Bs.)</label>
-                                            <input type="number" step="0.01" min="0" class="form-control bg-light text-success fw-bold" name="precio" value="<?= htmlspecialchars($fila['precio']) ?>" required>
-                                        </div>
-                                    </div>
-                                    <div class="alert alert-info py-2 px-3 mt-2 mb-0 small border-info">
-                                        <i class="lni lni-bulb me-1"></i> Si modificas el precio, solo afectará a las nuevas reservas.
-                                    </div>
-                                </div>
-                                <div class="modal-footer bg-light mt-0">
-                                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-warning fw-bold text-dark shadow-sm">Guardar Cambios</button>
-                                </div>
-                            </form>
+        .login-container {
+            z-index: 2;
+            width: 100%;
+            max-width: 450px;
+            padding: 15px;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 24px;
+            padding: 40px 35px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .login-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.45);
+        }
+
+        .brand-logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .brand-subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .form-label {
+            color: rgba(255, 255, 255, 0.85);
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .input-group-custom {
+            position: relative;
+            margin-bottom: 22px;
+        }
+
+        .input-group-custom i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 1.15rem;
+            transition: color 0.3s ease;
+            z-index: 10;
+        }
+
+        .form-control-custom {
+            width: 100%;
+            padding: 14px 16px 14px 48px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .form-control-custom:focus {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: #ff4747;
+            box-shadow: 0 0 15px rgba(255, 71, 71, 0.25);
+            outline: none;
+            color: #fff;
+        }
+
+        .form-control-custom:focus + i {
+            color: #ff4747;
+        }
+
+        .form-control-custom::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Estilo del botón */
+        .btn-login {
+            background: linear-gradient(90deg, #ff4747 0%, #e60000 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1.05rem;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(230, 0, 0, 0.3);
+            margin-top: 10px;
+        }
+
+        .btn-login:hover {
+            background: linear-gradient(90deg, #ff5e5e 0%, #ff1a1a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(230, 0, 0, 0.5);
+            color: #fff;
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        /* Alertas */
+        .alert-custom {
+            background: rgba(220, 53, 69, 0.15);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+            color: #ff858f;
+            border-radius: 12px;
+            padding: 12px 15px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        .footer-text {
+            text-align: center;
+            margin-top: 25px;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 0.8rem;
+            font-weight: 300;
+        }
+
+        .footer-text a {
+            color: rgba(255, 255, 255, 0.65);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-text a:hover {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Orbes de fondo -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <div class="login-container">
+        <div class="login-card text-center">
+            <!-- Título / Marca -->
+            <h1 class="brand-logo">
+                <i class="lni lni-apartment"></i> HabitApp
+            </h1>
+            <p class="brand-subtitle">Gestión de Reservas y Hotelería</p>
+
+            <!-- Alerta de error -->
+            <?php if (!empty($error_msg)): ?>
+                <div class="alert-custom text-start">
+                    <i class="lni lni-warning fs-5"></i>
+                    <div><?= htmlspecialchars($error_msg) ?></div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Formulario de Login -->
+            <form action="login.php" method="POST">
+                <div class="text-start">
+                    <div class="mb-1">
+                        <label class="form-label">Nombre de Usuario</label>
+                        <div class="input-group-custom">
+                            <input type="text" class="form-control-custom" name="usuario" placeholder="Ej. admin" required autocomplete="username" />
+                            <i class="lni lni-user"></i>
                         </div>
                     </div>
-                  </div>
 
-                  <!-- Modal Eliminar Tipo -->
-                  <div class="modal fade" id="modalEliminarTipo<?= $fila['id_tipo'] ?>" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 shadow-lg">
-                            <div class="modal-header bg-danger text-white">
-                                <h5 class="modal-title fw-bold"><i class="lni lni-trash me-1"></i> Confirmar Eliminación</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body p-4 text-center">
-                                <i class="lni lni-warning text-danger mb-3" style="font-size: 4rem;"></i>
-                                <p class="fs-5 text-dark mb-1">¿Estás seguro de eliminar el tipo <br><strong><?= htmlspecialchars($fila['nombre']) ?></strong>?</p>
-                                <?php if($fila['total_habitaciones'] > 0): ?>
-                                    <div class="alert alert-danger mt-3 border-danger text-start">
-                                        <i class="lni lni-ban me-1"></i> <strong>¡Atención!</strong> Hay <strong><?= $fila['total_habitaciones'] ?> habitaciones</strong> usando este tipo. Debes reasignarlas a otra categoría en el mapa antes de poder eliminar esta.
-                                    </div>
-                                <?php else: ?>
-                                    <p class="text-muted small mt-2">Esta acción no se puede deshacer.</p>
-                                <?php endif; ?>
-                            </div>
-                            <div class="modal-footer bg-light justify-content-center mt-0">
-                                <form action="delete.php" method="POST">
-                                    <input type="hidden" name="id_tipo" value="<?= $fila['id_tipo'] ?>">
-                                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                                    <?php if($fila['total_habitaciones'] == 0): ?>
-                                    <button type="submit" class="btn btn-danger fw-bold shadow-sm">Sí, Eliminar</button>
-                                    <?php endif; ?>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                  </div>
-
-                <?php endwhile; ?>
-              <?php endif; ?>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Crear Tipo -->
-  <div class="modal fade" id="modalCrearTipo" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title fw-bold"><i class="lni lni-circle-plus me-1"></i> Crear Tipo de Habitación</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form action="store.php" method="POST">
-                <div class="modal-body p-4 text-start">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold text-dark small">Código</label>
-                            <input type="text" class="form-control bg-light text-uppercase" name="codigo" placeholder="Ej. SGL" maxlength="5" required>
-                        </div>
-                        <div class="col-md-8 mb-3">
-                            <label class="form-label fw-bold text-dark small">Nombre</label>
-                            <input type="text" class="form-control bg-light" name="nombre" placeholder="Ej. Habitación Simple" required>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold text-dark small">Capacidad (Personas)</label>
-                            <input type="number" class="form-control bg-light" name="capacidad" min="1" max="20" value="1" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold text-dark small">Precio Base (Bs.)</label>
-                            <input type="number" step="0.01" min="0" class="form-control bg-light text-success fw-bold" name="precio" placeholder="0.00" required>
+                    <div class="mb-1">
+                        <label class="form-label">Contraseña</label>
+                        <div class="input-group-custom">
+                            <input type="password" class="form-control-custom" name="password" placeholder="••••••••" required autocomplete="current-password" />
+                            <i class="lni lni-lock"></i>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light mt-0">
-                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary fw-bold shadow-sm">Guardar Tipo</button>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-login">
+                        <i class="lni lni-enter me-2"></i>Iniciar Sesión
+                    </button>
                 </div>
             </form>
+
+            <div class="footer-text">
+                &copy; <?= date('Y') ?> HabitApp. Todos los derechos reservados.<br>
+                <a href="cliente/index.php" target="_blank"><i class="lni lni-link me-1"></i>Ir al portal de reservas de huéspedes</a>
+            </div>
         </div>
     </div>
-  </div>
 
-  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-  
-  <!-- Librerías para Exportar a Excel -->
-  <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-
-  <script src="../assets/js/bootstrap.min.js"></script>
-  <script src="../assets/js/habitapp.js?v=<?= time() ?>"></script>
-
-  <script>
-    $(document).ready(function() {
-        $('#tablaTipos').DataTable({
-            "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
-            "columnDefs": [{ "orderable": false, "targets": 5 }], // Excluir "Acciones" de ordenamiento
-            "dom": "<'row mb-3'<'col-md-6 d-flex align-items-center'B><'col-md-6'f>>" +
-                   "<'row'<'col-sm-12'tr>>" +
-                   "<'row mt-3'<'col-md-5'i><'col-md-7'p>>",
-            "buttons": [{
-                extend: 'excelHtml5',
-                text: '<i class="lni lni-empty-file"></i> Exportar a Excel',
-                className: 'btn btn-success btn-sm fw-bold shadow-sm',
-                title: 'Tipos_Habitacion_HabitApp',
-                exportOptions: { columns: [0, 1, 2, 3, 4] } // Excluye la columna de acciones
-            }]
-        });
-    });
-  </script>
 </body>
 </html>

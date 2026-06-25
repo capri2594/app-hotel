@@ -6,7 +6,18 @@ function showIframe(activeId) {
     document.getElementById('iframe-container').style.display = 'block';
     
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-    if (activeId) document.getElementById(activeId).classList.add('active');
+    if (activeId) {
+        let activeLink = document.getElementById(activeId);
+        if (activeLink) {
+            activeLink.classList.add('active');
+            let titleEl = document.getElementById('current-section-title');
+            if (titleEl) {
+                // Remove emoji/icon and get clean text
+                let text = activeLink.innerText.trim();
+                titleEl.innerHTML = text;
+            }
+        }
+    }
 }
   
 function showDashboardHome() {
@@ -14,7 +25,13 @@ function showDashboardHome() {
     document.getElementById('dashboard-home').style.display = 'block';
     
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-    document.getElementById('nav-dashboard').classList.add('active');
+    let activeLink = document.getElementById('nav-dashboard');
+    if (activeLink) activeLink.classList.add('active');
+    
+    let titleEl = document.getElementById('current-section-title');
+    if (titleEl) {
+        titleEl.innerHTML = "📊 Resumen General";
+    }
 }
 
 /* =========================================
