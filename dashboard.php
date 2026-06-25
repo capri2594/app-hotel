@@ -12,6 +12,9 @@ header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
+date_default_timezone_set('America/La_Paz');
+$mostrar_alerta_camara = (date('H:i') >= '08:00' && date('H:i') <= '10:00');
+
 include 'conexion.php';
 $stmt = $conexion->prepare("SELECT usuario FROM usuario WHERE id = ?");
 $stmt->bind_param("i", $_SESSION['usuario_id']);
@@ -107,6 +110,20 @@ while ($row = $res_pagos->fetch_assoc()) {
             background: rgba(255, 255, 255, 0.15);
             border-radius: 4px;
         }
+        
+        /* Animación para Campanilla de Alerta */
+        @keyframes bell-blink {
+            0% { opacity: 1; transform: scale(1); color: #dc3545; }
+            50% { opacity: 0.3; transform: scale(1.1); color: #ffc107; }
+            100% { opacity: 1; transform: scale(1); color: #dc3545; }
+        }
+        .bell-flash {
+            animation: bell-blink 1s infinite;
+            cursor: pointer;
+            font-size: 1.35rem;
+            display: inline-block;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body class="bg-light d-flex vh-100 overflow-hidden">
@@ -185,6 +202,13 @@ while ($row = $res_pagos->fetch_assoc()) {
         <h5 class="fw-bold text-dark mb-0" id="current-section-title">📊 Resumen General</h5>
       </div>
       <div class="d-flex align-items-center gap-3">
+        <!-- Campanilla parpadeante para Cámara Hotelera (08:00 AM - 10:00 AM) -->
+        <?php if ($mostrar_alerta_camara): ?>
+          <a href="#" data-bs-toggle="modal" data-bs-target="#modalAlertaCamara" title="Recordatorio: Generar Parte Cámara Hotelera" class="me-2">
+            <i class="lni lni-alarm bell-flash"></i>
+          </a>
+        <?php endif; ?>
+
         <!-- Botón rápido para copiar link de reservas -->
         <button class="btn btn-outline-danger btn-sm fw-bold d-flex align-items-center gap-2 shadow-sm py-1.5 px-3" onclick="copiarEnlaceReservas(this)">
           <i class="lni lni-link"></i> <span>Copiar Link de Reservas</span>
@@ -368,6 +392,32 @@ while ($row = $res_pagos->fetch_assoc()) {
     </div>
   </div>
 
+  <!-- Modal Recordatorio Cámara Hotelera (08:00 AM - 10:00 AM) -->
+  <div class="modal fade" id="modalAlertaCamara" tabindex="-1" aria-labelledby="modalAlertaCamaraLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header text-white" style="background-color: #6c5ce7;">
+          <h5 class="modal-title fw-bold" id="modalAlertaCamaraLabel">⚠️ Recordatorio: Cámara Hotelera</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 text-center">
+            <div class="mb-3 text-warning">
+                <i class="lni lni-alarm bell-flash fs-1" style="font-size: 3rem;"></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-2">¡Es Hora del Reporte Diario!</h5>
+            <p class="text-muted small">Le recordamos que se encuentra en el horario establecido (<strong>08:00 AM a 10:00 AM</strong>) para realizar el envío y generación del Parte Diario para la Cámara Hotelera.</p>
+            <p class="text-muted small">Por favor, presione el botón de abajo para ir directamente al panel de reportes.</p>
+        </div>
+        <div class="modal-footer bg-light d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cerrar Recordatorio</button>
+          <button type="button" class="btn text-white fw-bold shadow-sm" style="background-color: #6c5ce7;" onclick="showIframe('nav-reportes'); window.frames['content_frame'].location='reportes/reconciliation.php'; bootstrap.Modal.getInstance(document.getElementById('modalAlertaCamara')).hide();">
+            <i class="lni lni-printer me-1"></i> Ir a Reportes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     function copiarEnlaceReservas(btn) {
         // Calcular el enlace de la carpeta /cliente/ de forma dinámica
@@ -458,6 +508,18 @@ while ($row = $res_pagos->fetch_assoc()) {
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
         });
+
+        // 4. Mostrar alerta de Cámara Hotelera automáticamente una vez por sesión
+        if (<?= $mostrar_alerta_camara ? 'true' : 'false' ?>) {
+            if (!sessionStorage.getItem('alerta_camara_mostrada')) {
+                const modalEl = document.getElementById('modalAlertaCamara');
+                if (modalEl) {
+                    const alertModal = new bootstrap.Modal(modalEl);
+                    alertModal.show();
+                    sessionStorage.setItem('alerta_camara_mostrada', 'true');
+                }
+            }
+        }
     });
   </script>
 </body>

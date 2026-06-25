@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 08-05-2026 a las 21:19:22
+-- Tiempo de generación: 25-06-2026 a las 19:29:52
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -32,6 +32,13 @@ CREATE TABLE `detalle_reserva` (
   `reserva_id` int(11) NOT NULL,
   `habitacion_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `detalle_reserva`
+--
+
+INSERT INTO `detalle_reserva` (`id`, `reserva_id`, `habitacion_id`) VALUES
+(1, 1, 6);
 
 -- --------------------------------------------------------
 
@@ -86,7 +93,7 @@ INSERT INTO `habitacion` (`id_habitacion`, `numero`, `id_tipo`, `piso`, `estado`
 (3, 403, 3, 4, 'DISPONIBLE'),
 (4, 404, 1, 4, 'DISPONIBLE'),
 (5, 405, 2, 4, 'DISPONIBLE'),
-(6, 406, 4, 4, 'DISPONIBLE'),
+(6, 406, 4, 4, 'OCUPADA'),
 (7, 407, 3, 4, 'DISPONIBLE'),
 (8, 408, 1, 4, 'DISPONIBLE'),
 (9, 409, 2, 4, 'DISPONIBLE'),
@@ -192,6 +199,34 @@ CREATE TABLE `historial_mantenimiento` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `huesped`
+--
+
+CREATE TABLE `huesped` (
+  `id` int(11) NOT NULL,
+  `reserva_id` int(11) NOT NULL,
+  `habitacion_id` int(11) NOT NULL,
+  `nombre_completo` varchar(150) NOT NULL,
+  `documento` varchar(20) DEFAULT NULL,
+  `procedencia` varchar(100) DEFAULT NULL,
+  `nacionalidad` varchar(100) DEFAULT NULL,
+  `profesion` varchar(100) DEFAULT NULL,
+  `edad` int(3) DEFAULT NULL,
+  `estado_civil` varchar(50) DEFAULT NULL,
+  `es_principal` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `huesped`
+--
+
+INSERT INTO `huesped` (`id`, `reserva_id`, `habitacion_id`, `nombre_completo`, `documento`, `procedencia`, `nacionalidad`, `profesion`, `edad`, `estado_civil`, `es_principal`) VALUES
+(1, 1, 6, 'Reynaldo Flores', '7403044', 'Oruro', 'Boliviana', 'Ing. de Sistemas', 31, 'SOLTERO(A)', 1),
+(2, 1, 6, 'Neydan Flores Ayala', '123456', 'Oruro', 'Boliviana', NULL, 7, NULL, 0);
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `pagos`
 --
 
@@ -205,6 +240,13 @@ CREATE TABLE `pagos` (
   `detalle` varchar(255) DEFAULT NULL,
   `fecha` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `pagos`
+--
+
+INSERT INTO `pagos` (`id`, `reserva_id`, `tipo_pago`, `monto`, `monto_recibido`, `cambio`, `detalle`, `fecha`) VALUES
+(1, 1, 'EFECTIVO', 1680.00, 1700.00, 20.00, 'Pago de Estadía - Hab: 406 (Voucher #1)', '2026-06-25 17:23:51');
 
 -- --------------------------------------------------------
 
@@ -226,8 +268,17 @@ CREATE TABLE `reservas` (
   `foto_ci` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `confirmada_at` timestamp NULL DEFAULT NULL,
-  `checkout_at` timestamp NULL DEFAULT NULL
+  `checkin_at` timestamp NULL DEFAULT NULL,
+  `checkout_at` timestamp NULL DEFAULT NULL,
+  `nro_voucher` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `reservas`
+--
+
+INSERT INTO `reservas` (`id`, `nombre`, `ci`, `telefono`, `fecha_ingreso`, `fecha_salida`, `estado`, `desayuno`, `garage`, `total`, `foto_ci`, `created_at`, `confirmada_at`, `checkin_at`, `checkout_at`, `nro_voucher`) VALUES
+(1, 'Reynaldo Flores', '7403044', '+591 60408150', '2026-06-26', '2026-06-29', 'OCUPADA', 1, 1, 1680.00, 'uploads/ci/ci_reserva_1_1782408231.png', '2026-06-25 15:52:44', '2026-06-25 15:53:20', '2026-06-25 17:23:51', NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -337,6 +388,14 @@ ALTER TABLE `historial_mantenimiento`
   ADD KEY `usuario_id` (`usuario_id`);
 
 --
+-- Indices de la tabla `huesped`
+--
+ALTER TABLE `huesped`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_huesped_reserva` (`reserva_id`),
+  ADD KEY `fk_huesped_habitacion` (`habitacion_id`);
+
+--
 -- Indices de la tabla `pagos`
 --
 ALTER TABLE `pagos`
@@ -378,7 +437,7 @@ ALTER TABLE `usuario`
 -- AUTO_INCREMENT de la tabla `detalle_reserva`
 --
 ALTER TABLE `detalle_reserva`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `funcionario`
@@ -399,16 +458,22 @@ ALTER TABLE `historial_mantenimiento`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `huesped`
+--
+ALTER TABLE `huesped`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT de la tabla `pagos`
 --
 ALTER TABLE `pagos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `reservas`
 --
 ALTER TABLE `reservas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `rol`
@@ -457,6 +522,13 @@ ALTER TABLE `habitacion`
 ALTER TABLE `historial_mantenimiento`
   ADD CONSTRAINT `fk_hist_mantenimiento_hab` FOREIGN KEY (`habitacion_id`) REFERENCES `habitacion` (`id_habitacion`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_hist_mantenimiento_usu` FOREIGN KEY (`usuario_id`) REFERENCES `usuario` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `huesped`
+--
+ALTER TABLE `huesped`
+  ADD CONSTRAINT `fk_huesped_habitacion` FOREIGN KEY (`habitacion_id`) REFERENCES `habitacion` (`id_habitacion`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_huesped_reserva` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `pagos`

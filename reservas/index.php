@@ -70,6 +70,38 @@ $resultado = $conexion->query($sql);
 <!-- CSS para Botones de DataTables -->
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css" />
 
+<style>
+    /* Estilo premium para las pestañas de filtro */
+    .tab-filtro {
+        font-size: 0.82rem !important;
+        padding: 5px 10px !important;
+        white-space: nowrap !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease-in-out;
+    }
+    .tab-filtro:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    
+    /* Alinear input de búsqueda de Datatables */
+    .dataTables_filter label {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        margin-bottom: 0 !important;
+        font-weight: bold !important;
+        font-size: 0.9rem !important;
+        color: #555 !important;
+    }
+    .dataTables_filter input {
+        margin-left: 0 !important;
+        border-radius: 6px !important;
+        border: 1px solid #ced4da !important;
+        padding: 5px 10px !important;
+    }
+</style>
+
 <body class="bg-light py-4">
   <div class="container">
     
@@ -209,7 +241,7 @@ $resultado = $conexion->query($sql);
                           </div>
                       <?php endif; ?>
                     </td>
-                    <td class="text-center pe-4">
+                     <td class="text-center pe-4 text-nowrap">
                       <?php if ($fila['estado'] == 'SOLICITADA'): ?>
                           <!-- Botón Confirmar -->
                           <button type="button" class="btn btn-sm btn-success fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalConfirmar<?= $fila['id'] ?>">
@@ -352,7 +384,7 @@ $resultado = $conexion->query($sql);
       <?php elseif ($fila['estado'] == 'RESERVADA'): ?>
       <!-- Modal de Check-in y Cobro -->
       <div class="modal fade" id="modalCheckin<?= $fila['id'] ?>" tabindex="-1" aria-labelledby="modalCheckinLabel<?= $fila['id'] ?>" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-info text-dark">
                     <h5 class="modal-title fw-bold" id="modalCheckinLabel<?= $fila['id'] ?>"><i class="lni lni-enter me-1"></i> Consolidar Check-in </h5>
@@ -363,42 +395,145 @@ $resultado = $conexion->query($sql);
                     <div class="modal-body p-4 text-start">
                         <input type="hidden" name="id" value="<?= $fila['id'] ?>">
                         <input type="hidden" name="total_pagar" id="total_pagar_<?= $fila['id'] ?>" value="<?= $fila['total'] ?>">
-                        <?php $noches_calculadas = max(1, (strtotime($fila['fecha_salida']) - strtotime($fila['fecha_ingreso'])) / 86400); ?>
+                        <?php 
+                        $noches_calculadas = max(1, (strtotime($fila['fecha_salida']) - strtotime($fila['fecha_ingreso'])) / 86400); 
+                        $id_reserva = $fila['id'];
+                        $sql_habs = "SELECT h.id_habitacion, h.numero, t.nombre as tipo 
+                                     FROM detalle_reserva dr 
+                                     JOIN habitacion h ON dr.habitacion_id = h.id_habitacion 
+                                     JOIN tipo_habitacion t ON h.id_tipo = t.id_tipo 
+                                     WHERE dr.reserva_id = $id_reserva";
+                        $res_habs = $conexion->query($sql_habs);
+                        $habitaciones_opciones = [];
+                        if ($res_habs) {
+                            while($h_row = $res_habs->fetch_assoc()) {
+                                $habitaciones_opciones[] = $h_row;
+                            }
+                        }
+                        $habitaciones_json = json_encode($habitaciones_opciones);
+                        ?>
 
                         <div class="alert alert-light border shadow-sm mb-4">
-                            <h6 class="fw-bold mb-1"><i class="lni lni-user me-1"></i> Huésped: <?= htmlspecialchars($fila['nombre'] ?? '') ?></h6>
+                            <h6 class="fw-bold mb-1"><i class="lni lni-user me-1"></i> Pre-Reserva de: <?= htmlspecialchars($fila['nombre'] ?? '') ?></h6>
                             <p class="mb-0 small text-muted">Habitación(es) Asignada(s): <strong class="text-primary fs-6"><?= htmlspecialchars($fila['numeros_habitaciones'] ?? 'Sin Asignar') ?></strong> - <?= htmlspecialchars($fila['tipos_habitaciones'] ?? 'N/A') ?></p>
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 border-end pe-4">
-                                <h6 class="fw-bold mb-3 text-dark"><i class="lni lni-camera me-1"></i> 1. Documento Identidad</h6>
-                                <div class="mb-3">
-                                    <label class="form-label text-secondary small">Fotografía del CI / Pasaporte / DNI Extranjero</label>
-                                    <input class="form-control" type="file" name="foto_ci" accept="image/*" required>
-                                    <div class="form-text">Asegúrese de que los datos sean legibles.</div>
+                            <!-- Columna Izquierda: Registro de Huéspedes -->
+                            <div class="col-lg-8 border-end pe-lg-4">
+                                <h5 class="fw-bold text-primary mb-3 border-bottom pb-2">
+                                    <i class="lni lni-users"></i> 1. Registro de Huéspedes para Parte Policial
+                                </h5>
+                                
+                                <!-- Huésped Principal (Titular) -->
+                                <div class="card border border-primary-subtle shadow-sm mb-4">
+                                    <div class="card-header bg-primary bg-opacity-10 text-primary py-2 fw-bold small">
+                                        <i class="lni lni-crown text-warning"></i> Huésped Principal (Titular)
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label text-secondary small fw-bold mb-1">Nombre Completo</label>
+                                                <input type="text" class="form-control" name="titular_nombre" value="<?= htmlspecialchars($fila['nombre'] ?? '') ?>" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label text-secondary small fw-bold mb-1">CI / Pasaporte</label>
+                                                <input type="text" class="form-control" name="titular_documento" value="<?= htmlspecialchars($fila['ci'] ?? '') ?>" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label text-secondary small fw-bold mb-1">Edad</label>
+                                                <input type="number" id="titular_edad_<?= $fila['id'] ?>" class="form-control" name="titular_edad" min="18" max="100" step="1" onchange="validarMenor(<?= $fila['id'] ?>, 'titular')" onblur="validarMenor(<?= $fila['id'] ?>, 'titular')" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label text-secondary small fw-bold mb-1">Procedencia</label>
+                                                <input type="text" class="form-control" name="titular_procedencia" placeholder="Ej. Cochabamba" required>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label text-secondary small fw-bold mb-1">Nacionalidad</label>
+                                                <input type="text" class="form-control" name="titular_nacionalidad" value="Boliviana" required>
+                                            </div>
+                                            <div class="col-md-6" id="titular_profesion_group_<?= $fila['id'] ?>">
+                                                 <label class="form-label text-secondary small fw-bold mb-1">Profesión</label>
+                                                 <input type="text" id="titular_profesion_<?= $fila['id'] ?>" class="form-control" name="titular_profesion" required>
+                                             </div>
+                                             <div class="col-md-6" id="titular_civil_group_<?= $fila['id'] ?>">
+                                                 <label class="form-label text-secondary small fw-bold mb-1">Estado Civil</label>
+                                                 <select id="titular_civil_<?= $fila['id'] ?>" class="form-select" name="titular_estado_civil" required>
+                                                     <option value="">-- Seleccionar --</option>
+                                                     <option value="SOLTERO(A)">Soltero(a)</option>
+                                                     <option value="CASADO(A)">Casado(a)</option>
+                                                     <option value="DIVORCIADO(A)">Divorciado(a)</option>
+                                                     <option value="VIUDO(A)">Viudo(a)</option>
+                                                 </select>
+                                             </div>
+                                             <?php if (count($habitaciones_opciones) > 1): ?>
+                                             <div class="col-12">
+                                                 <label class="form-label text-secondary small fw-bold mb-1">Habitación Asignada (Pieza)</label>
+                                                 <select class="form-select" name="titular_habitacion" required>
+                                                     <?php foreach ($habitaciones_opciones as $hab): ?>
+                                                         <option value="<?= $hab['id_habitacion'] ?>">Hab. <?= $hab['numero'] ?> (<?= $hab['tipo'] ?>)</option>
+                                                     <?php endforeach; ?>
+                                                 </select>
+                                             </div>
+                                             <?php else: ?>
+                                                 <input type="hidden" name="titular_habitacion" value="<?= $habitaciones_opciones[0]['id_habitacion'] ?>">
+                                             <?php endif; ?>
+                                        </div>
+                                    </div>
                                 </div>
-                                <h6 class="fw-bold mt-4 mb-2 text-dark"><i class="lni lni-star me-1 text-warning"></i> 2. Servicios Opcionales</h6>
-                                <p class="text-muted small mb-2">Puede agregar o quitar servicios antes de cobrar:</p>
-                                <div class="form-check form-switch mb-2">
-                                    <?php 
-                                      $capacidad_reserva = intval($fila['capacidad_total'] ?? 1);
-                                      $costo_desayuno = 30 * $capacidad_reserva;
-                                    ?>
-                                    <input class="form-check-input" type="checkbox" name="desayuno" value="1" <?= $fila['desayuno'] ? 'checked' : '' ?> onchange="toggleServicio(<?= $fila['id'] ?>, <?= $costo_desayuno ?>, <?= $noches_calculadas ?>, this)">
-                                <label class="form-check-label text-secondary small fw-bold">☕ Desayuno (+Bs. <?= $costo_desayuno ?>/noche para <?= $capacidad_reserva ?> pers.)</label>
-                                </div>
-                                <div class="d-flex align-items-center mt-2">
-                                <label class="form-label text-secondary small fw-bold mb-0 me-2">🚗 Garages (+Bs. 20/auto por noche)</label>
-                                    <input type="number" class="form-control form-control-sm text-center border-secondary" name="garage" id="garage_<?= $fila['id'] ?>" value="<?= $fila['garage'] ?? 0 ?>" min="0" max="10" style="width: 70px;" data-old-value="<?= $fila['garage'] ?? 0 ?>" onchange="actualizarCantidadServicio(<?= $fila['id'] ?>, 20, <?= $noches_calculadas ?>, this)">
+                                
+                                <!-- Acompañantes -->
+                                <h6 class="fw-bold text-dark d-flex justify-content-between align-items-center mb-3">
+                                    <span><i class="lni lni-users me-1"></i> Acompañantes</span>
+                                    <button type="button" class="btn btn-sm btn-outline-primary shadow-sm fw-bold" onclick='agregarAcompanante(<?= $fila['id'] ?>, <?= htmlspecialchars($habitaciones_json, ENT_QUOTES, "UTF-8") ?>)'>
+                                        <i class="lni lni-plus"></i> Agregar Acompañante
+                                    </button>
+                                </h6>
+                                
+                                <div id="acomp-container-<?= $fila['id'] ?>">
+                                    <!-- Se insertarán aquí los acompañantes dinámicamente -->
                                 </div>
                             </div>
-                            <div class="col-md-6 ps-4">
-                                <h6 class="fw-bold mb-3 text-dark"><i class="lni lni-wallet me-1"></i> 3. Registro de Pago</h6>
+                            
+                            <!-- Columna Derecha: Control y Pago -->
+                            <div class="col-lg-4 ps-lg-4">
+                                <h5 class="fw-bold text-primary mb-3 border-bottom pb-2">
+                                    <i class="lni lni-cog"></i> 2. Control y Pago
+                                </h5>
+                                
+                                <h6 class="fw-bold text-dark mb-2"><i class="lni lni-camera text-info"></i> Documento Identidad</h6>
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small">Fotografía del CI / Pasaporte</label>
+                                    <input class="form-control" type="file" name="foto_ci" accept="image/*" required>
+                                    <div class="form-text text-muted small">Cargue una captura o foto clara.</div>
+                                </div>
+                                
+                                <hr class="my-3">
+                                
+                                <h6 class="fw-bold text-dark mb-2"><i class="lni lni-coffee text-warning"></i> Servicios Opcionales</h6>
+                                <div class="bg-light p-3 rounded border mb-3">
+                                    <div class="form-check form-switch mb-2">
+                                        <?php 
+                                          $capacidad_reserva = intval($fila['capacidad_total'] ?? 1);
+                                          $costo_desayuno = 30 * $capacidad_reserva;
+                                        ?>
+                                        <input class="form-check-input" type="checkbox" name="desayuno" value="1" <?= $fila['desayuno'] ? 'checked' : '' ?> onchange="toggleServicio(<?= $fila['id'] ?>, <?= $costo_desayuno ?>, <?= $noches_calculadas ?>, this)">
+                                        <label class="form-check-label text-secondary small fw-bold">☕ Desayuno (+Bs. <?= $costo_desayuno ?>/noche)</label>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <label class="form-label text-secondary small fw-bold mb-0 me-2">🚗 Garages (Bs. 20/noche)</label>
+                                        <input type="number" class="form-control form-control-sm text-center border-secondary" name="garage" id="garage_<?= $fila['id'] ?>" value="<?= $fila['garage'] ?? 0 ?>" min="0" max="10" style="width: 70px;" data-old-value="<?= $fila['garage'] ?? 0 ?>" onchange="actualizarCantidadServicio(<?= $fila['id'] ?>, 20, <?= $noches_calculadas ?>, this)">
+                                    </div>
+                                </div>
+                                
+                                <hr class="my-3">
+                                
+                                <h6 class="fw-bold text-dark mb-2"><i class="lni lni-wallet text-success"></i> Registro de Pago</h6>
                                 <div class="alert alert-light border shadow-sm text-center py-2 mb-3">
                                     <span class="d-block small text-muted">Total a Cobrar</span>
                                     <strong class="fs-3 text-primary" id="display_total_<?= $fila['id'] ?>">Bs. <?= number_format((float)($fila['total'] ?? 0), 2) ?></strong>
                                 </div>
+                                
                                 <div class="mb-3">
                                     <label class="form-label text-secondary small">Método de Pago</label>
                                     <select class="form-select bg-light" name="tipo_pago" required>
@@ -407,9 +542,16 @@ $resultado = $conexion->query($sql);
                                         <option value="DEPOSITO">🏦 Depósito Bancario</option>
                                     </select>
                                 </div>
-                                <div class="row g-2">
-                                    <div class="col-6"><label class="form-label text-secondary small">Efectivo Recibido</label><input type="number" step="0.01" min="<?= $fila['total'] ?>" class="form-control text-success fw-bold" name="monto_recibido" id="recibido_<?= $fila['id'] ?>" placeholder="0.00" oninput="calcularCambio(<?= $fila['id'] ?>)" required></div>
-                                    <div class="col-6"><label class="form-label text-secondary small">Cambio a Devolver</label><input type="text" class="form-control bg-light text-success fw-bold" name="cambio" id="cambio_<?= $fila['id'] ?>" value="0.00" readonly></div>
+                                
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label text-secondary small">Recibido (Bs.)</label>
+                                        <input type="number" step="0.01" min="<?= $fila['total'] ?>" class="form-control text-success fw-bold" name="monto_recibido" id="recibido_<?= $fila['id'] ?>" placeholder="0.00" oninput="calcularCambio(<?= $fila['id'] ?>)" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label text-secondary small">Cambio (Bs.)</label>
+                                        <input type="text" class="form-control bg-light text-success fw-bold" name="cambio" id="cambio_<?= $fila['id'] ?>" value="0.00" readonly>
+                                    </div>
                                 </div>
                             </div>
                         </div>

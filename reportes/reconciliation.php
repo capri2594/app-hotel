@@ -92,6 +92,46 @@ include '../conexion.php';
         </div>
       </div>
 
+      <!-- TARJETA 4: Parte Policial -->
+      <div class="col-md-4">
+        <div class="card shadow-sm border-0 rounded-3 h-100">
+            <div class="card-header text-white border-0 py-3" style="background-color: #680202;">
+                <h5 class="mb-0 fw-bold fs-6 text-white"><i class="lni lni-shield me-2 text-white"></i>Parte Policial de Control</h5>
+            </div>
+            <div class="card-body p-4 d-flex flex-column">
+                <p class="text-muted small mb-4">Genera el listado oficial de control policial de todos los huéspedes (titulares y acompañantes) hospedados en una fecha específica.</p>
+                
+                <form action="arqueos/PolicialPdf.php" method="POST" target="_blank" class="mt-auto">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small">Seleccionar Fecha del Control</label>
+                        <input type="date" class="form-control bg-light border-secondary" name="fecha" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <button type="submit" class="btn fw-bold w-100 shadow-sm text-white" style="background-color: #680202; border-color: #680202;"><i class="lni lni-printer me-1 text-white"></i> Imprimir Parte Policial</button>
+                </form>
+            </div>
+        </div>
+      </div>
+
+      <!-- TARJETA 5: Parte de Cámara Hotelera -->
+      <div class="col-md-4">
+        <div class="card shadow-sm border-0 rounded-3 h-100">
+            <div class="card-header text-white border-0 py-3" style="background-color: #6c5ce7;">
+                <h5 class="mb-0 fw-bold fs-6 text-white"><i class="lni lni-home me-2 text-white"></i>Parte Cámara Hotelera</h5>
+            </div>
+            <div class="card-body p-4 d-flex flex-column">
+                <p class="text-muted small mb-4">Genera el movimiento diario (Llegadas, Salidas y Pernoctaciones) con corte de 24 horas a las 08:00 AM para la Cámara Hotelera.</p>
+                
+                <form action="arqueos/CamaraPdf.php" method="POST" target="_blank" class="mt-auto">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark small">Seleccionar Fecha del Parte</label>
+                        <input type="date" class="form-control bg-light border-secondary" name="fecha" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <button type="submit" class="btn fw-bold w-100 shadow-sm text-white" style="background-color: #6c5ce7; border-color: #6c5ce7;"><i class="lni lni-printer me-1 text-white"></i> Imprimir Parte Diario</button>
+                </form>
+            </div>
+        </div>
+      </div>
+
     </div>
   </div>
 

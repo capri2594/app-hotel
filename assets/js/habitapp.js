@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 "order": [], // Respetar el orden exacto y oficial enviado por PHP (SQL)
                 "columnDefs": [{ "orderable": false, "targets": 7 }],
                 "deferRender": true, // Optimización extrema para manejar miles de filas sin lentitud
-                "dom": "<'row mb-3'<'col-md-6 d-flex align-items-center'B><'col-md-6'f>>" +
+                "dom": "<'row mb-3 align-items-center'<'col-md-6 d-flex align-items-center'B><'col-md-6 d-flex align-items-center justify-content-md-end justify-content-start'f>>" +
                        "<'row'<'col-sm-12'tr>>" +
                        "<'row mt-3'<'col-md-5'i><'col-md-7'p>>",
                 "buttons": [{
@@ -288,3 +288,179 @@ document.addEventListener('DOMContentLoaded', function() {
         tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
     }
 });
+
+/* =========================================
+   Funciones de Acompañantes y Huéspedes
+========================================= */
+let acompCounter = 0;
+
+function agregarAcompanante(reservaId, habitacionesJson) {
+    const container = document.getElementById('acomp-container-' + reservaId);
+    if (!container) return;
+    
+    const index = acompCounter++;
+    
+    let habitaciones = [];
+    try {
+        habitaciones = typeof habitacionesJson === 'string' ? JSON.parse(habitacionesJson) : habitacionesJson;
+    } catch(e) {
+        console.error("Error al parsear habitaciones:", e);
+    }
+    
+    let roomOptions = '';
+    habitaciones.forEach(function(hab) {
+        roomOptions += '<option value="' + hab.id_habitacion + '">Hab. ' + hab.numero + ' (' + hab.tipo + ')</option>';
+    });
+
+    let roomSection = '';
+    if (habitaciones.length > 1) {
+        roomSection = `
+        <div class="col-12 mt-2">
+            <label class="form-label text-secondary small mb-1">Habitación Asignada (Pieza)</label>
+            <select class="form-select form-select-sm" name="acomp_habitacion[]" required>
+                ${roomOptions}
+            </select>
+        </div>`;
+    } else if (habitaciones.length === 1) {
+        roomSection = `<input type="hidden" name="acomp_habitacion[]" value="${habitaciones[0].id_habitacion}">`;
+    }
+
+    const html = `
+    <div class="card border border-secondary-subtle shadow-sm mb-3 companion-row" id="companion_card_${reservaId}_${index}">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+            <span class="fw-bold text-secondary small"><i class="lni lni-user me-1"></i> Acompañante</span>
+            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 fw-bold" style="font-size: 0.75rem;" onclick="eliminarAcompanante(${reservaId}, ${index})">
+                <i class="lni lni-trash"></i> Eliminar
+            </button>
+        </div>
+        <div class="card-body p-3">
+            <div class="row g-2">
+                <div class="col-md-6 col-12">
+                    <label class="form-label text-secondary small mb-1">Nombre Completo</label>
+                    <input type="text" class="form-control form-control-sm" name="acomp_nombre[]" required>
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label text-secondary small mb-1">CI / Pasaporte</label>
+                    <input type="text" class="form-control form-control-sm" name="acomp_documento[]">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label text-secondary small mb-1">Edad</label>
+                    <input type="number" class="form-control form-control-sm" name="acomp_edad[]" id="acomp_${reservaId}_${index}_edad" min="0" max="100" step="1" oninput="validarMenorAcompanante(${reservaId}, ${index})" required>
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label text-secondary small mb-1">Procedencia</label>
+                    <input type="text" class="form-control form-control-sm" name="acomp_procedencia[]">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label text-secondary small mb-1">Nacionalidad</label>
+                    <input type="text" class="form-control form-control-sm" name="acomp_nacionalidad[]" value="Boliviana">
+                </div>
+                <div class="col-md-3 col-6" id="acomp_${reservaId}_${index}_profesion_group">
+                    <label class="form-label text-secondary small mb-1">Profesión</label>
+                    <input type="text" class="form-control form-control-sm" name="acomp_profesion[]" id="acomp_${reservaId}_${index}_profesion" required>
+                </div>
+                <div class="col-md-3 col-6" id="acomp_${reservaId}_${index}_civil_group">
+                    <label class="form-label text-secondary small mb-1">Estado Civil</label>
+                    <select class="form-select form-select-sm" name="acomp_estado_civil[]" id="acomp_${reservaId}_${index}_civil" required>
+                        <option value="">-- Seleccionar --</option>
+                        <option value="SOLTERO(A)">Soltero(a)</option>
+                        <option value="CASADO(A)">Casado(a)</option>
+                        <option value="DIVORCIADO(A)">Divorciado(a)</option>
+                        <option value="VIUDO(A)">Viudo(a)</option>
+                    </select>
+                </div>
+                ${roomSection}
+            </div>
+        </div>
+    </div>`;
+    
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function eliminarAcompanante(reservaId, index) {
+    const el = document.getElementById('companion_card_' + reservaId + '_' + index);
+    if (el) el.remove();
+}
+
+function validarMenor(reservaId, key) {
+    let edadId = key + '_edad_' + reservaId;
+    let profesionId = key + '_profesion_' + reservaId;
+    let civilId = key + '_civil_' + reservaId;
+    let profesionGroupId = key + '_profesion_group_' + reservaId;
+    let civilGroupId = key + '_civil_group_' + reservaId;
+    
+    let isTitular = (key === 'titular');
+    
+    if (key.startsWith('acomp_')) {
+        edadId = key + '_edad';
+        profesionId = key + '_profesion';
+        civilId = key + '_civil';
+        profesionGroupId = key + '_profesion_group';
+        civilGroupId = key + '_civil_group';
+    }
+    
+    const edadInput = document.getElementById(edadId);
+    const profesionInput = document.getElementById(profesionId);
+    const civilInput = document.getElementById(civilId);
+    const profesionGroup = document.getElementById(profesionGroupId);
+    const civilGroup = document.getElementById(civilGroupId);
+    
+    if (edadInput && edadInput.value !== '') {
+        let edadValue = parseFloat(edadInput.value);
+        if (isNaN(edadValue)) {
+            edadInput.value = '';
+            return;
+        }
+        
+        // Eliminar decimales
+        let edad = Math.floor(edadValue);
+        
+        // Si es titular, edad mínima de 18
+        let minEdad = isTitular ? 18 : 0;
+        
+        if (edad < minEdad) {
+            edad = minEdad;
+        } else if (edad > 100) {
+            edad = 100;
+        }
+        
+        // Devolver valor limpio y corregido al input
+        edadInput.value = edad;
+
+        // El juego de ocultar/mostrar es exclusivo de los acompañantes (titular siempre es adulto)
+        if (!isTitular) {
+            if (edad < 18) {
+                if (profesionInput) {
+                    profesionInput.value = '';
+                    profesionInput.disabled = true;
+                    profesionInput.removeAttribute('required');
+                }
+                if (profesionGroup) profesionGroup.style.setProperty('display', 'none', 'important');
+                
+                if (civilInput) {
+                    civilInput.value = '';
+                    civilInput.disabled = true;
+                    civilInput.removeAttribute('required');
+                }
+                if (civilGroup) civilGroup.style.setProperty('display', 'none', 'important');
+            } else {
+                if (profesionInput) {
+                    profesionInput.disabled = false;
+                    profesionInput.setAttribute('required', 'required');
+                }
+                if (profesionGroup) profesionGroup.style.setProperty('display', 'block', 'important');
+                
+                if (civilInput) {
+                    civilInput.disabled = false;
+                    civilInput.setAttribute('required', 'required');
+                }
+                if (civilGroup) civilGroup.style.setProperty('display', 'block', 'important');
+            }
+        }
+    }
+}
+
+function validarMenorAcompanante(reservaId, index) {
+    const key = 'acomp_' + reservaId + '_' + index;
+    validarMenor(reservaId, key);
+}
