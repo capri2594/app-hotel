@@ -8,6 +8,12 @@ if (!isset($_SESSION['usuario_id'])) {
 
 include '../conexion.php';
 
+$caja_activa = obtenerCajaActiva($conexion);
+if (!$caja_activa) {
+    header("Location: index.php?error=" . urlencode("Debe abrir un turno de caja para realizar operaciones."));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id_reserva = intval($_POST['id'] ?? 0);
     $nueva_salida = $_POST['nueva_fecha_salida'];
@@ -54,10 +60,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $numeros_habitaciones = $stmt_habs->get_result()->fetch_assoc()['numeros'] ?? '';
 
             // 3. Todo en orden -> Extender fechas, sumar el costo y registrar el pago
-            $conexion->query("UPDATE reservas SET fecha_salida = '$nueva_salida', total = total + $monto_cobrar WHERE id = $id_reserva");
+            $detalle = "Extensión de Estadía hasta " . date('d/m/Y', strtotime($nueva_salida)) . " - Hab: " . $numeros_habitaciones;
+            
+            $stmt_update_res = $conexion->prepare("UPDATE reservas SET fecha_salida = ?, total = total + ? WHERE id = ?");
+            $stmt_update_res->bind_param("sdi", $nueva_salida, $monto_cobrar, $id_reserva);
+            $stmt_update_res->execute();
 
-            $detalle = "Pago por extensión de estadía - Hab: " . $numeros_habitaciones . " en Fecha: " . date('d/m/Y', strtotime($vieja_salida)) . " a " . date('d/m/Y', strtotime($nueva_salida));
-            $conexion->query("INSERT INTO pagos (reserva_id, tipo_pago, monto, monto_recibido, cambio, detalle) VALUES ($id_reserva, '$tipo_pago', $monto_cobrar, $monto_recibido, $cambio, '$detalle')");
+            $caja_id = $caja_activa['id'];
+            $stmt_pago = $conexion->prepare("INSERT INTO pagos (reserva_id, caja_id, tipo_pago, monto, monto_recibido, cambio, detalle) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt_pago->bind_param("iisddds", $id_reserva, $caja_id, $tipo_pago, $monto_cobrar, $monto_recibido, $cambio, $detalle);
+            $stmt_pago->execute();
+
+            registrarAuditoria($conexion, 'EXTENDER_ESTADIA', 'reservas', $id_reserva, "Se extendió la estadía hasta " . date('d/m/Y', strtotime($nueva_salida)) . ". Monto cobrado: " . $monto_cobrar . " Bs.");
 
             $conexion->commit();
             header("Location: index.php?msg=" . urlencode("Estadía extendida exitosamente hasta el " . date('d/m/Y', strtotime($nueva_salida)) . "."));

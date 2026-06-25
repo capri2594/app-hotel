@@ -8,7 +8,18 @@ if (!isset($_SESSION['usuario_id'])) {
 
 include '../conexion.php';
 
+$caja_activa = obtenerCajaActiva($conexion);
+if (!$caja_activa) {
+    header("Location: index.php?error=" . urlencode("Debe abrir un turno de caja para realizar check-in."));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $num_factura = trim($_POST['num_factura'] ?? '');
+    if (empty($num_factura)) {
+        header("Location: index.php?error=" . urlencode("El número de factura es obligatorio para finalizar el check-in."));
+        exit;
+    }
     $id_reserva = intval($_POST['id'] ?? 0);
     $total_pagar = floatval($_POST['total_pagar'] ?? 0);
     $tipo_pago = $_POST['tipo_pago'] ?? 'EFECTIVO';
@@ -68,8 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $habs_result = $stmt_habs->get_result()->fetch_assoc();
             $detalle_pago = "Pago de Estadía - Hab: " . ($habs_result['numeros'] ?? 'S/A') . " (Voucher #" . $nro_voucher . ")";
             
-            $stmt_pago = $conexion->prepare("INSERT INTO pagos (reserva_id, tipo_pago, monto, monto_recibido, cambio, detalle) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt_pago->bind_param("isddds", $id_reserva, $tipo_pago, $total_pagar, $monto_recibido, $cambio, $detalle_pago);
+            $caja_id = $caja_activa['id'];
+            $stmt_pago = $conexion->prepare("INSERT INTO pagos (reserva_id, caja_id, tipo_pago, monto, monto_recibido, cambio, detalle, num_factura) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt_pago->bind_param("iisdddss", $id_reserva, $caja_id, $tipo_pago, $total_pagar, $monto_recibido, $cambio, $detalle_pago, $num_factura);
             $stmt_pago->execute();
 
             // C. Registrar Huéspedes (Titular y Acompañantes) en la tabla huesped
@@ -130,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_habitacion->bind_param("i", $id_reserva);
             $stmt_habitacion->execute();
 
+            registrarAuditoria($conexion, 'CHECKIN', 'reservas', $id_reserva, "Check-in consolidado exitosamente. Factura Nº: " . $num_factura . ", Total cobrado: " . $total_pagar . " Bs. Voucher: " . $nro_voucher);
             // Confirmar todo
             $conexion->commit();
             header("Location: index.php?msg=" . urlencode("¡Check-in Consolidado! Las habitaciones ahora están OCUPADAS y el pago ha sido registrado en caja. Voucher #" . $nro_voucher));

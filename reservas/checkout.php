@@ -8,6 +8,12 @@ if (!isset($_SESSION['usuario_id'])) {
 
 include '../conexion.php';
 
+$caja_activa = obtenerCajaActiva($conexion);
+if (!$caja_activa) {
+    header("Location: index.php?error=" . urlencode("Debe abrir un turno de caja para realizar operaciones."));
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id_reserva = intval($_POST['id'] ?? 0);
     $monto_extra = floatval($_POST['monto_extra'] ?? 0);
@@ -22,8 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Asegurarnos que la columna 'detalle' exista en la tabla 'pagos'
                 $conexion->query("ALTER TABLE pagos ADD COLUMN IF NOT EXISTS detalle VARCHAR(255) NULL AFTER cambio");
                 
-                $stmt_pago_extra = $conexion->prepare("INSERT INTO pagos (reserva_id, tipo_pago, monto, detalle) VALUES (?, ?, ?, ?)");
-                $stmt_pago_extra->bind_param("isds", $id_reserva, $tipo_pago_extra, $monto_extra, $detalle_extra);
+                $caja_id = $caja_activa['id'];
+                $stmt_pago_extra = $conexion->prepare("INSERT INTO pagos (reserva_id, caja_id, tipo_pago, monto, detalle) VALUES (?, ?, ?, ?, ?)");
+                $stmt_pago_extra->bind_param("iisds", $id_reserva, $caja_id, $tipo_pago_extra, $monto_extra, $detalle_extra);
                 $stmt_pago_extra->execute();
             }
 
@@ -38,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_habitacion->bind_param("i", $id_reserva);
             $stmt_habitacion->execute();
 
+            registrarAuditoria($conexion, 'CHECKOUT', 'reservas', $id_reserva, "Check-out procesado exitosamente. Monto extra cobrado: " . $monto_extra . " Bs.");
             $conexion->commit();
 
             // 4. Guardar el ID en sesión para imprimir el PDF

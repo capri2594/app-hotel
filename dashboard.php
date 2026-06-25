@@ -16,6 +16,83 @@ date_default_timezone_set('America/La_Paz');
 $mostrar_alerta_camara = (date('H:i') >= '08:00' && date('H:i') <= '10:00');
 
 include 'conexion.php';
+
+// ==========================================
+// CONTROL DE CAJA Y TURNOS (ACCIONES POST)
+// ==========================================
+$caja_activa = obtenerCajaActiva($conexion);
+$efectivo_esperado = 0.00;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action_caja'])) {
+        $action = $_POST['action_caja'];
+        $usuario_id = $_SESSION['usuario_id'];
+        
+        if ($action === 'apertura') {
+            $monto_apertura = floatval($_POST['monto_apertura'] ?? 0);
+            $stmt = $conexion->prepare("INSERT INTO control_caja (usuario_id, monto_apertura, estado) VALUES (?, ?, 'ABIERTA')");
+            $stmt->bind_param("id", $usuario_id, $monto_apertura);
+            $stmt->execute();
+            
+            $caja_id = $conexion->insert_id;
+            registrarAuditoria($conexion, 'APERTURA_CAJA', 'control_caja', $caja_id, "Se abrió la caja con un monto inicial de: " . $monto_apertura . " Bs.");
+            
+            $_SESSION['msg'] = "Turno de caja iniciado y abierto con éxito.";
+            header("Location: dashboard.php");
+            exit;
+        }
+        
+        if ($action === 'retiro' && $caja_activa) {
+            $monto_retiro = floatval($_POST['monto_retiro'] ?? 0);
+            $observaciones = trim($_POST['observaciones'] ?? 'Recojo de Dinero (10:00 AM)');
+            
+            $stmt = $conexion->prepare("INSERT INTO retiros_caja (caja_id, usuario_id, monto, observaciones) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("iids", $caja_activa['id'], $usuario_id, $monto_retiro, $observaciones);
+            $stmt->execute();
+            
+            registrarAuditoria($conexion, 'RETIRO_CAJA', 'retiros_caja', $conexion->insert_id, "Retiro de caja (Recojo de dinero): " . $monto_retiro . " Bs. Detalle: " . $observaciones);
+            
+            $_SESSION['msg'] = "Retiro de dinero registrado exitosamente en caja.";
+            header("Location: dashboard.php");
+            exit;
+        }
+        
+        if ($action === 'cierre' && $caja_activa) {
+            $monto_cierre_real = floatval($_POST['monto_cierre_real'] ?? 0);
+            $observaciones = trim($_POST['observaciones'] ?? '');
+            
+            $monto_apertura = $caja_activa['monto_apertura'];
+            
+            // Suma pagos efectivos
+            $sql_pagos = "SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE caja_id = ? AND tipo_pago = 'EFECTIVO'";
+            $stmt_p = $conexion->prepare($sql_pagos);
+            $stmt_p->bind_param("i", $caja_activa['id']);
+            $stmt_p->execute();
+            $pagos_efectivo = $stmt_p->get_result()->fetch_assoc()['total'];
+            
+            // Suma retiros
+            $sql_retiros = "SELECT COALESCE(SUM(monto), 0) as total FROM retiros_caja WHERE caja_id = ?";
+            $stmt_r = $conexion->prepare($sql_retiros);
+            $stmt_r->bind_param("i", $caja_activa['id']);
+            $stmt_r->execute();
+            $retiros = $stmt_r->get_result()->fetch_assoc()['total'];
+            
+            $monto_cierre_sistema = $monto_apertura + $pagos_efectivo - $retiros;
+            $diferencia = $monto_cierre_real - $monto_cierre_sistema;
+            
+            $stmt = $conexion->prepare("UPDATE control_caja SET fecha_cierre = NOW(), monto_cierre_sistema = ?, monto_cierre_real = ?, diferencia = ?, observaciones = ?, estado = 'CERRADA' WHERE id = ?");
+            $stmt->bind_param("dddsi", $monto_cierre_sistema, $monto_cierre_real, $diferencia, $observaciones, $caja_activa['id']);
+            $stmt->execute();
+            
+            registrarAuditoria($conexion, 'CIERRE_CAJA', 'control_caja', $caja_activa['id'], "Cierre de caja. Esperado: " . $monto_cierre_sistema . " Bs. Real: " . $monto_cierre_real . " Bs. Dif: " . $diferencia . " Bs.");
+            
+            $_SESSION['msg'] = "Caja cerrada y turno finalizado exitosamente. Diferencia: " . number_format($diferencia, 2) . " Bs.";
+            header("Location: dashboard.php");
+            exit;
+        }
+    }
+}
+
 $stmt = $conexion->prepare("SELECT usuario FROM usuario WHERE id = ?");
 $stmt->bind_param("i", $_SESSION['usuario_id']);
 $stmt->execute();
@@ -173,6 +250,13 @@ while ($row = $res_pagos->fetch_assoc()) {
           </a>
         </li>
         <?php endif; ?>
+        <?php if ($_SESSION['rol'] == 'SuperAdmin'): ?>
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center gap-2 py-2 px-3 rounded-3" id="nav-auditoria" href="reportes/auditoria.php" target="content_frame" onclick="showIframe('nav-auditoria')">
+            <span class="fs-5">📜</span> Bitácora Auditoría
+          </a>
+        </li>
+        <?php endif; ?>
       </ul>
     </div>
     
@@ -235,6 +319,76 @@ while ($row = $res_pagos->fetch_assoc()) {
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         <?php unset($_SESSION['error']); ?>
+    <?php endif; ?>
+
+    <!-- SECCIÓN: CONTROL DE CAJA Y TURNO ACTIVO -->
+    <?php if ($_SESSION['rol'] !== 'SuperAdmin'): ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <?php if ($caja_activa === null): ?>
+                <div class="card border-0 shadow-sm p-3 mb-4" style="background-color: #f8d7da; border-left: 5px solid #dc3545 !important;">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                        <div>
+                            <h5 class="fw-bold mb-1" style="color: #842029;"><i class="lni lni-lock me-1"></i> Turno de Caja Cerrado</h5>
+                            <p class="mb-0 small text-dark">Para comenzar a operar, recibir pagos de huéspedes y consolidar Check-ins/Check-outs, debe abrir su caja ingresando el fondo de apertura inicial.</p>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-danger fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAbrirCaja">
+                                <i class="lni lni-key"></i> Abrir Caja / Iniciar Turno
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            <?php else: ?>
+                <?php
+                    // Cálculos de la caja activa
+                    $caja_id = $caja_activa['id'];
+                    $efectivo_pagado = $conexion->query("SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE caja_id = $caja_id AND tipo_pago = 'EFECTIVO'")->fetch_assoc()['total'];
+                    $otros_pagos = $conexion->query("SELECT COALESCE(SUM(CASE WHEN tipo_pago='QR' THEN monto ELSE 0 END), 0) as qr, COALESCE(SUM(CASE WHEN tipo_pago='DEPOSITO' THEN monto ELSE 0 END), 0) as dep FROM pagos WHERE caja_id = $caja_id")->fetch_assoc();
+                    $total_retiros = $conexion->query("SELECT COALESCE(SUM(monto), 0) as total FROM retiros_caja WHERE caja_id = $caja_id")->fetch_assoc()['total'];
+                    
+                    $efectivo_esperado = $caja_activa['monto_apertura'] + $efectivo_pagado - $total_retiros;
+                ?>
+                <div class="card border shadow-sm p-3 mb-4" style="background-color: #d1e7dd; border-color: #badbcc; border-left: 5px solid #198754 !important;">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                        <div class="flex-grow-1">
+                            <h5 class="fw-bold mb-2" style="color: #0f5132;"><i class="lni lni-unlock me-1"></i> Turno de Caja Abierto</h5>
+                            <div class="row g-2 text-dark font-monospace small">
+                                <div class="col-6 col-sm-3">
+                                    <span class="d-block small" style="color: #145a32; font-weight: 600;">Fondo de Apertura</span>
+                                    <strong class="text-dark fs-6">Bs. <?= number_format($caja_activa['monto_apertura'], 2) ?></strong>
+                                </div>
+                                <div class="col-6 col-sm-3">
+                                    <span class="d-block small" style="color: #145a32; font-weight: 600;">Cobros en Efectivo</span>
+                                    <strong class="fs-6" style="color: #0f5132;">+Bs. <?= number_format($efectivo_pagado, 2) ?></strong>
+                                </div>
+                                <div class="col-6 col-sm-3">
+                                    <span class="d-block small" style="color: #145a32; font-weight: 600;">Retiros (Recojo 10 AM)</span>
+                                    <strong class="fs-6" style="color: #842029;">-Bs. <?= number_format($total_retiros, 2) ?></strong>
+                                </div>
+                                <div class="col-6 col-sm-3 bg-white p-2 rounded shadow-sm border border-success">
+                                    <span class="text-secondary d-block small fw-bold">Efectivo en Caja (Esperado)</span>
+                                    <strong class="text-dark fs-6">Bs. <?= number_format($efectivo_esperado, 2) ?></strong>
+                                </div>
+                            </div>
+                            <div class="mt-2 small d-flex flex-wrap gap-3" style="color: #0f5132; font-weight: 500;">
+                                <span><i class="lni lni-timer me-1"></i>Apertura: <?= date('d/m/Y H:i', strtotime($caja_activa['fecha_apertura'])) ?></span>
+                                <span><i class="lni lni-empty-file me-1"></i>Cobros Otros Métodos: QR (Bs. <?= number_format($otros_pagos['qr'], 2) ?>) | Depósito (Bs. <?= number_format($otros_pagos['dep'], 2) ?>)</span>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column gap-2" style="min-width: 220px;">
+                            <button type="button" class="btn btn-outline-danger btn-sm fw-bold bg-white" data-bs-toggle="modal" data-bs-target="#modalRetiroCaja">
+                                <i class="lni lni-coin"></i> Registrar Recojo (10:00 AM)
+                            </button>
+                            <button type="button" class="btn btn-success btn-sm fw-bold shadow-sm text-white" data-bs-toggle="modal" data-bs-target="#modalCerrarCaja">
+                                <i class="lni lni-lock"></i> Cerrar Turno y Caja
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
     <?php endif; ?>
 
     <!-- NIVEL 1: Acciones Rápidas -->
@@ -386,6 +540,107 @@ while ($row = $res_pagos->fetch_assoc()) {
           <div class="modal-footer bg-light">
             <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
             <button type="submit" class="btn btn-primary fw-bold">Actualizar Contraseña</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Abrir Caja -->
+  <div class="modal fade" id="modalAbrirCaja" tabindex="-1" aria-labelledby="modalAbrirCajaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title fw-bold" id="modalAbrirCajaLabel"><i class="lni lni-key me-1"></i> Abrir Turno de Caja</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="dashboard.php" method="POST">
+          <input type="hidden" name="action_caja" value="apertura">
+          <div class="modal-body p-4">
+              <div class="mb-3 text-center">
+                  <span class="fs-1">💵</span>
+                  <p class="text-muted small mt-2">Por favor, ingrese el saldo inicial (dinero en efectivo) que recibe en caja chica para iniciar operaciones.</p>
+              </div>
+              <div class="mb-3">
+                  <label class="form-label text-dark fw-bold small">Monto de Apertura (Bs.)</label>
+                  <input type="number" step="0.01" min="0" max="10000" class="form-control form-control-lg text-center font-monospace fw-bold text-primary" name="monto_apertura" value="0.00" required>
+              </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger fw-bold shadow-sm">Iniciar Turno / Abrir Caja</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Registrar Retiro -->
+  <div class="modal fade" id="modalRetiroCaja" tabindex="-1" aria-labelledby="modalRetiroCajaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title fw-bold" id="modalRetiroCajaLabel"><i class="lni lni-coin me-1"></i> Registrar Recojo de Dinero (Retiro)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="dashboard.php" method="POST">
+          <input type="hidden" name="action_caja" value="retiro">
+          <div class="modal-body p-4">
+              <div class="mb-3 text-center">
+                  <span class="fs-1">💰</span>
+                  <p class="text-muted small mt-2">Use esta opción para registrar retiros de caja chica en efectivo (por ejemplo, el recojo programado de dinero a las 10:00 AM).</p>
+              </div>
+              <div class="mb-3">
+                  <label class="form-label text-dark fw-bold small">Monto a Retirar (Bs.)</label>
+                  <input type="number" step="0.01" min="0.01" class="form-control form-control-lg text-center font-monospace fw-bold text-danger" name="monto_retiro" placeholder="0.00" required>
+              </div>
+              <div class="mb-3">
+                  <label class="form-label text-dark fw-bold small">Concepto / Observaciones</label>
+                  <input type="text" class="form-control" name="observaciones" value="Recojo de Dinero (10:00 AM)" required>
+              </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning fw-bold shadow-sm text-dark">Registrar Retiro</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Cerrar Turno -->
+  <div class="modal fade" id="modalCerrarCaja" tabindex="-1" aria-labelledby="modalCerrarCajaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold" id="modalCerrarCajaLabel"><i class="lni lni-lock me-1"></i> Cerrar Caja y Finalizar Turno</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="dashboard.php" method="POST">
+          <input type="hidden" name="action_caja" value="cierre">
+          <div class="modal-body p-4">
+              <div class="mb-3 text-center">
+                  <span class="fs-1">🔒</span>
+                  <p class="text-muted small mt-2">Proceda al arqueo físico. Cuente todo el efectivo existente en el cajón de la recepción y declare el monto real abajo.</p>
+              </div>
+              
+              <div class="alert alert-light border font-monospace text-center py-2 mb-3">
+                  <span class="small text-muted d-block">Efectivo Esperado (Sistema)</span>
+                  <strong class="fs-4 text-secondary">Bs. <?= number_format($efectivo_esperado ?? 0, 2) ?></strong>
+              </div>
+              
+              <div class="mb-3">
+                  <label class="form-label text-dark fw-bold small">Monto Declarado (Efectivo Real Contado) (Bs.)</label>
+                  <input type="number" step="0.01" min="0" class="form-control form-control-lg text-center font-monospace fw-bold text-success" name="monto_cierre_real" placeholder="0.00" required>
+              </div>
+              <div class="mb-3">
+                  <label class="form-label text-dark fw-bold small">Observaciones del Cierre</label>
+                  <textarea class="form-control small" name="observaciones" placeholder="Indique observaciones si existiera faltante/sobrante..." rows="2"></textarea>
+              </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold shadow-sm text-white">Proceder con el Cierre de Caja</button>
           </div>
         </form>
       </div>

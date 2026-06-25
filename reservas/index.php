@@ -14,6 +14,10 @@ header("Pragma: no-cache");
 
 include '../conexion.php';
 
+$caja_activa = obtenerCajaActiva($conexion);
+$mostrar_bloqueo_caja = ($_SESSION['rol'] !== 'SuperAdmin' && $caja_activa === null);
+$btn_disabled = $mostrar_bloqueo_caja ? 'disabled title="Debe abrir turno de caja para realizar esta operación"' : '';
+
 // PARCHE AUTOMÁTICO: Agregar columna confirmada_at si no existe
 $conexion->query("ALTER TABLE reservas ADD COLUMN IF NOT EXISTS confirmada_at TIMESTAMP NULL AFTER created_at");
 
@@ -134,6 +138,17 @@ $resultado = $conexion->query($sql);
         <?php unset($_SESSION['last_checkout_id']); // Limpiar la sesión para que no vuelva a aparecer ?>
     <?php endif; ?>
 
+    <!-- Alerta de Caja Cerrada -->
+    <?php if ($mostrar_bloqueo_caja): ?>
+        <div class="alert alert-danger border shadow-sm mb-4 d-flex align-items-center gap-3 py-3" role="alert">
+            <div class="fs-2 text-danger" style="font-size: 1.8rem;"><i class="lni lni-warning"></i></div>
+            <div>
+                <h6 class="alert-heading fw-bold mb-1">Operaciones Transaccionales Bloqueadas</h6>
+                <p class="mb-0 small">No se detectó un turno de caja activo para su usuario. Para consolidar Check-in, Check-out o registrar extensiones y cobros, debe abrir una caja en el <a href="../dashboard.php" class="alert-link fw-bold text-decoration-underline">Dashboard</a>.</p>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h2 class="fw-bold text-dark"><i class="lni lni-agenda me-2"></i>Gestión de Reservas</h2>
       <a href="../habitacion/index.php" class="btn btn-outline-primary fw-bold shadow-sm">
@@ -250,7 +265,7 @@ $resultado = $conexion->query($sql);
                       <?php elseif ($fila['estado'] == 'RESERVADA'): ?>
                           <div class="d-flex justify-content-center gap-1">
                               <!-- Botón Check-in -->
-                              <button type="button" class="btn btn-sm btn-info fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalCheckin<?= $fila['id'] ?>">
+                              <button type="button" class="btn btn-sm btn-info fw-bold shadow-sm text-dark" data-bs-toggle="modal" data-bs-target="#modalCheckin<?= $fila['id'] ?>" <?= $btn_disabled ?>>
                                 <i class="lni lni-enter"></i> Check-in
                               </button>
                               <!-- Botón Reenviar WA -->
@@ -276,10 +291,10 @@ $resultado = $conexion->query($sql);
                           </div>
                       <?php elseif ($fila['estado'] == 'OCUPADA'): ?>
                           <div class="d-flex justify-content-center gap-1">
-                              <button type="button" class="btn btn-sm btn-primary fw-bold shadow-sm" title="Extender Estadía" data-bs-toggle="modal" data-bs-target="#modalExtender<?= $fila['id'] ?>">
+                              <button type="button" class="btn btn-sm btn-primary fw-bold shadow-sm" title="Extender Estadía" data-bs-toggle="modal" data-bs-target="#modalExtender<?= $fila['id'] ?>" <?= $btn_disabled ?>>
                                 <i class="lni lni-calendar"></i> Extender
                               </button>
-                              <button type="button" class="btn btn-sm btn-warning fw-bold shadow-sm text-dark" title="Finalizar Estadía" data-bs-toggle="modal" data-bs-target="#modalCheckout<?= $fila['id'] ?>">
+                              <button type="button" class="btn btn-sm btn-warning fw-bold shadow-sm text-dark" title="Finalizar Estadía" data-bs-toggle="modal" data-bs-target="#modalCheckout<?= $fila['id'] ?>" <?= $btn_disabled ?>>
                                 <i class="lni lni-exit"></i> Check-out
                               </button>
                           </div>
@@ -541,6 +556,11 @@ $resultado = $conexion->query($sql);
                                         <option value="QR">📱 Transferencia QR</option>
                                         <option value="DEPOSITO">🏦 Depósito Bancario</option>
                                     </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small fw-bold"><i class="lni lni-empty-file text-primary"></i> Nº de Factura Externa</label>
+                                    <input type="text" class="form-control fw-bold border-primary" name="num_factura" placeholder="Ej. F-10023" required>
                                 </div>
                                 
                                 <div class="row g-2 mb-3">
